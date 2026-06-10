@@ -14,6 +14,7 @@ import com.project.common.exception.*;
 import com.project.common.util.SecurityUtils;
 import com.project.modules.auth.dto.request.*;
 import com.project.modules.auth.dto.response.AuthResponse;
+import com.project.modules.auth.dto.response.RefreshResponse;
 import com.project.modules.auth.entity.*;
 import com.project.modules.auth.repository.*;
 import com.project.modules.auth.service.AuthService;
@@ -51,13 +52,12 @@ public class AuthServiceImpl implements AuthService {
                 .orElseThrow(() -> new UnauthorizedException("Invalid username or password")));
     }
 
-    public AuthResponse refresh(RefreshTokenRequest r) {
+    public RefreshResponse refresh(RefreshTokenRequest r) {
         var token = refreshTokens.findByToken(r.refreshToken())
                 .orElseThrow(() -> new UnauthorizedException("Invalid refresh token"));
         if (token.isRevoked() || token.getExpiryDate().isBefore(Instant.now()))
             throw new UnauthorizedException("Refresh token expired or revoked");
-        token.setRevoked(true);
-        return tokens(token.getUser());
+        return new RefreshResponse(jwt.createAccessToken(token.getUser()), "Bearer");
     }
 
     public void logout(LogoutRequest r) {

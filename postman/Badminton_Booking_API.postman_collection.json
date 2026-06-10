@@ -288,7 +288,9 @@
                 "exec": [
                   "const data = pm.response.json().data;",
                   "pm.collectionVariables.set('customerAccessToken', data.accessToken);",
-                  "pm.collectionVariables.set('customerRefreshToken', data.refreshToken);"
+                  "pm.test('Refresh response does not contain a refresh token', function () {",
+                  "    pm.expect(data).to.not.have.property('refreshToken');",
+                  "});"
                 ]
               }
             }
@@ -308,7 +310,8 @@
               "mode": "raw",
               "raw": "{\n  \"refreshToken\": \"{{customerRefreshToken}}\"\n}"
             },
-            "url": "{{baseUrl}}/api/v1/auth/refresh"
+            "url": "{{baseUrl}}/api/v1/auth/refresh",
+            "description": "Dùng refresh token hiện tại để lấy access token mới. Response không trả refresh token mới, vì vậy biến `customerRefreshToken` được giữ nguyên."
           }
         },
         {

@@ -2,13 +2,14 @@ package com.project.modules.auth.service;
 
 import com.project.modules.auth.dto.request.*;
 import com.project.modules.auth.dto.response.AuthResponse;
+import com.project.modules.auth.dto.response.RefreshResponse;
 
 public interface AuthService {
     AuthResponse register(RegisterRequest request);
 
     AuthResponse login(LoginRequest request);
 
-    AuthResponse refresh(RefreshTokenRequest request);
+    RefreshResponse refresh(RefreshTokenRequest request);
 
     void logout(LogoutRequest request);
 

@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import com.project.common.response.ApiResponse;
 import com.project.modules.auth.dto.request.*;
 import com.project.modules.auth.dto.response.AuthResponse;
+import com.project.modules.auth.dto.response.RefreshResponse;
 import com.project.modules.auth.service.AuthService;
 
 import lombok.RequiredArgsConstructor;
@@ -28,7 +29,7 @@ public class AuthController {
     }
 
     @PostMapping("/refresh")
-    ApiResponse<AuthResponse> refresh(@Valid @RequestBody RefreshTokenRequest r) {
+    ApiResponse<RefreshResponse> refresh(@Valid @RequestBody RefreshTokenRequest r) {
         return ApiResponse.success("Token refreshed", service.refresh(r));
     }
 
