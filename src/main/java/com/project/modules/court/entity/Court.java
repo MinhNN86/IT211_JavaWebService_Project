@@ -2,6 +2,8 @@ package com.project.modules.court.entity;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 import jakarta.persistence.*;
 
@@ -32,8 +34,10 @@ public class Court {
     @Column(nullable = false)
     @Builder.Default
     private CourtStatus status = CourtStatus.ACTIVE;
-    @Column(name = "image_url")
-    private String imageUrl;
+    @OneToMany(mappedBy = "court", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("createdAt ASC")
+    @Builder.Default
+    private List<CourtImage> images = new ArrayList<>();
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     @PrePersist

@@ -48,7 +48,7 @@ public class SecurityConfig {
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/courts/**",
                                 "/api/v1/time-slots/**")
                         .permitAll().requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/v1/manager/**", "/api/v1/files/**").hasAnyRole("MANAGER", "ADMIN")
+                        .requestMatchers("/api/v1/manager/**").hasAnyRole("MANAGER", "ADMIN")
                         .requestMatchers("/api/v1/customer/**").hasRole("CUSTOMER").anyRequest().authenticated())
                 .addFilterBefore(filter, UsernamePasswordAuthenticationFilter.class).build();
     }

@@ -417,7 +417,8 @@ Ký hiệu quyền:
 | `POST`   | `/api/v1/manager/courts`                  | Manager/Admin | `name`, `description?`, `address`, `pricePerHour`            | Tạo sân                  |
 | `PUT`    | `/api/v1/manager/courts/{id}`             | Manager/Admin | `name`, `description?`, `address`, `pricePerHour`, `status?` | Cập nhật sân             |
 | `DELETE` | `/api/v1/manager/courts/{id}`             | Manager/Admin | Path `id`                                                    | Soft delete sân          |
-| `POST`   | `/api/v1/manager/courts/{courtId}/images` | Manager/Admin | Multipart `file`                                             | Upload hoặc thay ảnh sân |
+| `POST`   | `/api/v1/manager/courts/{courtId}/images` | Manager/Admin | Multipart `files`                                            | Thêm nhiều ảnh vào sân   |
+| `DELETE` | `/api/v1/manager/courts/images/{imageId}` | Manager/Admin | UUID của ảnh                                                 | Xóa ảnh khỏi sân         |
 
 Lưu ý: endpoint public lấy sân không tự động ẩn sân `INACTIVE` hoặc `MAINTENANCE`. Dùng query `status=ACTIVE` nếu chỉ muốn lấy sân đang hoạt động.
 
@@ -443,13 +444,6 @@ Lưu ý: endpoint public lấy sân không tự động ẩn sân `INACTIVE` ho�
 | `PUT`  | `/api/v1/manager/bookings/{id}/status` | Manager/Admin | `status`                                        | Chuyển trạng thái booking         |
 
 `bookingDate` dùng định dạng `yyyy-MM-dd` và không được ở trong quá khứ.
-
-### Upload file độc lập
-
-| Method | Endpoint               | Quyền         | Request          | Mô tả                                 |
-| ------ | ---------------------- | ------------- | ---------------- | ------------------------------------- |
-| `POST` | `/api/v1/files/upload` | Manager/Admin | Multipart `file` | Upload ảnh sân nhưng chưa gắn với sân |
-| `GET`  | `/uploads/**`          | Public        | URL ảnh          | Truy cập file đã upload               |
 
 ## Flow endpoint
 
@@ -584,7 +578,6 @@ flowchart LR
 | `/api/v1/auth/change-password`      |   ✗    |    ✓     |    ✓    |   ✓   |
 | `/api/v1/customer/**`               |   ✗    |    ✓     |    ✗    |   ✗   |
 | `/api/v1/manager/**`                |   ✗    |    ✗     |    ✓    |   ✓   |
-| `/api/v1/files/**`                  |   ✗    |    ✗     |    ✓    |   ✓   |
 | `/api/v1/admin/**`                  |   ✗    |    ✗     |    ✗    |   ✓   |
 
 Ma trận trên mô tả tài khoản demo chỉ có một role. Nếu một user được Admin gán nhiều role, user đó có quyền của tất cả role được gán.
@@ -628,12 +621,13 @@ uploads/courts/<uuid>.<extension>
 
 Giới hạn mỗi file: `10MB`.
 
-Upload hoặc thay ảnh hiện tại của sân:
+Thêm ảnh vào sân:
 
 ```bash
 curl -X POST http://localhost:8080/api/v1/manager/courts/1/images \
   -H 'Authorization: Bearer <manager-access-token>' \
-  -F 'file=@/path/to/court.jpg'
+  -F 'files=@/path/to/court-1.jpg' \
+  -F 'files=@/path/to/court-2.jpg'
 ```
 
 Response:
@@ -642,10 +636,18 @@ Response:
 {
   "success": true,
   "message": "Upload successfully",
-  "data": {
-    "fileName": "generated-uuid.jpg",
-    "url": "/uploads/courts/generated-uuid.jpg"
-  }
+  "data": [
+    {
+      "id": "generated-uuid-1",
+      "fileName": "generated-uuid-1.jpg",
+      "url": "/uploads/courts/generated-uuid-1.jpg"
+    },
+    {
+      "id": "generated-uuid-2",
+      "fileName": "generated-uuid-2.jpg",
+      "url": "/uploads/courts/generated-uuid-2.jpg"
+    }
+  ]
 }
 ```
 
@@ -655,7 +657,12 @@ File có thể được truy cập công khai qua:
 http://localhost:8080/uploads/courts/generated-uuid.jpg
 ```
 
-Mỗi sân có tối đa một ảnh, URL được lưu trực tiếp tại cột `courts.image_url`. Endpoint `/api/v1/files/upload` chỉ lưu file và trả URL, không cập nhật sân. Dùng `/api/v1/manager/courts/{courtId}/images` khi cần gắn hoặc thay ảnh sân.
+Server validate toàn bộ danh sách trước, sau đó lưu tuần tự từng ảnh. Mỗi sân có thể chứa nhiều ảnh. UUID của ảnh được trả về khi upload và trong trường `images` của response sân. Xóa ảnh bằng:
+
+```bash
+curl -X DELETE http://localhost:8080/api/v1/manager/courts/images/<image-uuid> \
+  -H 'Authorization: Bearer <manager-access-token>'
+```
 
 ## Ví dụ sử dụng nhanh
 

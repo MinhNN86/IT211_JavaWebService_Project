@@ -43,6 +43,24 @@ CREATE TABLE IF NOT EXISTS courts (
     CONSTRAINT chk_courts_status CHECK (status IN ('ACTIVE', 'INACTIVE', 'MAINTENANCE'))
 ) ENGINE = InnoDB;
 
+CREATE TABLE IF NOT EXISTS court_images (
+    id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    court_id BIGINT NOT NULL,
+    file_name VARCHAR(255) NOT NULL,
+    url VARCHAR(255) NOT NULL,
+    created_at DATETIME(6) NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_court_images_url (url),
+    KEY idx_court_images_court (court_id),
+    CONSTRAINT fk_court_images_court FOREIGN KEY (court_id) REFERENCES courts (id) ON DELETE CASCADE
+) ENGINE = InnoDB;
+
+-- Preserve images stored by older versions that used courts.image_url.
+INSERT IGNORE INTO court_images (id, court_id, file_name, url, created_at)
+SELECT UUID(), id, SUBSTRING_INDEX(image_url, '/', -1), image_url, COALESCE(updated_at, created_at, NOW(6))
+FROM courts
+WHERE image_url IS NOT NULL AND image_url <> '';
+
 CREATE TABLE IF NOT EXISTS time_slots (
     id BIGINT NOT NULL AUTO_INCREMENT,
     start_time TIME(6) NOT NULL,

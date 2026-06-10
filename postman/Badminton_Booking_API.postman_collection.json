@@ -85,6 +85,11 @@
       "type": "string"
     },
     {
+      "key": "imageId",
+      "value": "",
+      "type": "string"
+    },
+    {
       "key": "timeSlotId",
       "value": "1",
       "type": "string"
@@ -116,6 +121,11 @@
     },
     {
       "key": "uploadFilePath",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "uploadFilePath2",
       "value": "",
       "type": "string"
     },
@@ -788,26 +798,20 @@
       },
       "item": [
         {
-          "name": "Upload File",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "body": {
-              "mode": "formdata",
-              "formdata": [
-                {
-                  "key": "file",
-                  "type": "file",
-                  "src": "{{uploadFilePath}}"
-                }
-              ]
-            },
-            "url": "{{baseUrl}}/api/v1/files/upload",
-            "description": "Đặt `uploadFilePath` hoặc chọn lại file trong Postman trước khi gửi."
-          }
-        },
-        {
           "name": "Upload and Attach Court Image",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    pm.collectionVariables.set('imageId', pm.response.json().data[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [],
@@ -815,14 +819,28 @@
               "mode": "formdata",
               "formdata": [
                 {
-                  "key": "file",
+                  "key": "files",
                   "type": "file",
                   "src": "{{uploadFilePath}}"
+                },
+                {
+                  "key": "files",
+                  "type": "file",
+                  "src": "{{uploadFilePath2}}"
                 }
               ]
             },
             "url": "{{baseUrl}}/api/v1/manager/courts/{{courtId}}/images",
-            "description": "Đặt `uploadFilePath` hoặc chọn lại file trong Postman trước khi gửi. Ảnh mới sẽ thay ảnh hiện tại của sân."
+            "description": "Đặt `uploadFilePath`, `uploadFilePath2` hoặc chọn lại các file trong Postman trước khi gửi. Các ảnh được validate trước và lưu tuần tự."
+          }
+        },
+        {
+          "name": "Delete Court Image",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/manager/courts/images/{{imageId}}",
+            "description": "Đặt `imageId` bằng UUID trả về khi upload ảnh hoặc lấy từ response chi tiết sân."
           }
         }
       ]
