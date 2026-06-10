@@ -1,0 +1,14 @@
+.gradle/
+build/
+uploads/*
+!uploads/courts/
+uploads/courts/*
+!uploads/courts/.gitkeep
+.idea/
+.vscode/
+*.iml
+
+.agents/
+.claude/
+skills-lock.json
+CLAUDE.md
