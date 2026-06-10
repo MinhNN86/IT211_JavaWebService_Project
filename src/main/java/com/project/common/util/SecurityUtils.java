@@ -14,4 +14,11 @@ public final class SecurityUtils {
             throw new UnauthorizedException("Authentication required");
         return auth.getName();
     }
+
+    public static boolean hasRole(String role) {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null && auth.isAuthenticated()
+                && auth.getAuthorities().stream()
+                        .anyMatch(authority -> authority.getAuthority().equals("ROLE_" + role));
+    }
 }

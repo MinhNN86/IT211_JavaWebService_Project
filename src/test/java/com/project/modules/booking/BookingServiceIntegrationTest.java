@@ -1,0 +1,101 @@
+package com.project.modules.booking;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.math.BigDecimal;
+import java.time.*;
+import java.util.List;
+
+import org.junit.jupiter.api.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.project.common.exception.BadRequestException;
+import com.project.common.exception.ConflictException;
+import com.project.modules.booking.dto.request.CreateBookingRequest;
+import com.project.modules.booking.repository.BookingRepository;
+import com.project.modules.booking.service.BookingService;
+import com.project.modules.court.entity.Court;
+import com.project.modules.court.repository.CourtRepository;
+import com.project.modules.timeslot.entity.TimeSlot;
+import com.project.modules.timeslot.repository.TimeSlotRepository;
+
+@SpringBootTest
+@Transactional
+class BookingServiceIntegrationTest {
+    @Autowired
+    private BookingService service;
+    @Autowired
+    private BookingRepository bookings;
+    @Autowired
+    private CourtRepository courts;
+    @Autowired
+    private TimeSlotRepository timeSlots;
+
+    @BeforeEach
+    void setUp() {
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken("customer", null, List.of()));
+        bookings.deleteAll();
+        timeSlots.deleteAll();
+        courts.deleteAll();
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
+        bookings.deleteAll();
+        timeSlots.deleteAll();
+        courts.deleteAll();
+    }
+
+    @Test
+    void createsOneBookingWithMultipleTimeSlots() {
+        var court = createCourt();
+        var first = createTimeSlot(LocalTime.of(18, 0), LocalTime.of(19, 0));
+        var second = createTimeSlot(LocalTime.of(19, 0), LocalTime.of(20, 0));
+
+        var response = service.create(request(court, List.of(first.getId(), second.getId())));
+
+        assertThat(response.timeSlots()).extracting("id").containsExactly(first.getId(), second.getId());
+        assertThat(bookings.findById(response.id()).orElseThrow().getTimeSlots()).hasSize(2);
+    }
+
+    @Test
+    void rejectsBookingWhenAnySelectedTimeSlotIsAlreadyBooked() {
+        var court = createCourt();
+        var first = createTimeSlot(LocalTime.of(18, 0), LocalTime.of(19, 0));
+        var second = createTimeSlot(LocalTime.of(19, 0), LocalTime.of(20, 0));
+        service.create(request(court, List.of(first.getId())));
+
+        assertThatThrownBy(() -> service.create(request(court, List.of(first.getId(), second.getId()))))
+                .isInstanceOf(ConflictException.class);
+    }
+
+    @Test
+    void rejectsDuplicateTimeSlotIds() {
+        var court = createCourt();
+        var slot = createTimeSlot(LocalTime.of(18, 0), LocalTime.of(19, 0));
+
+        assertThatThrownBy(() -> service.create(request(court, List.of(slot.getId(), slot.getId()))))
+                .isInstanceOf(BadRequestException.class);
+    }
+
+    private CreateBookingRequest request(Court court, List<Long> timeSlotIds) {
+        return new CreateBookingRequest(court.getId(), timeSlotIds, LocalDate.now().plusDays(1), null);
+    }
+
+    private Court createCourt() {
+        return courts.save(Court.builder().name("Court 1").address("Address")
+                .pricePerHour(BigDecimal.valueOf(100_000)).build());
+    }
+
+    private TimeSlot createTimeSlot(LocalTime start, LocalTime end) {
+        return timeSlots
+                .save(TimeSlot.builder().startTime(start).endTime(end).price(BigDecimal.valueOf(50_000)).build());
+    }
+}

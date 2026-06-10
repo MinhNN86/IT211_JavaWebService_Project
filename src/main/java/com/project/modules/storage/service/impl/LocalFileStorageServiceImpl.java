@@ -13,6 +13,7 @@ import com.project.common.exception.*;
 import com.project.modules.court.entity.CourtImage;
 import com.project.modules.court.repository.CourtImageRepository;
 import com.project.modules.court.repository.CourtRepository;
+import com.project.modules.court.service.CourtAccessService;
 import com.project.modules.storage.dto.response.FileUploadResponse;
 import com.project.modules.storage.service.FileStorageService;
 
@@ -25,6 +26,7 @@ public class LocalFileStorageServiceImpl implements FileStorageService {
             ".jpg", "image/webp", ".webp");
     private final CourtRepository courts;
     private final CourtImageRepository images;
+    private final CourtAccessService courtAccess;
     @Value("${app.file.upload-dir}")
     private String uploadDir;
     @Value("${app.file.public-path}")
@@ -54,6 +56,7 @@ public class LocalFileStorageServiceImpl implements FileStorageService {
 
     @Transactional
     public List<FileUploadResponse> attachToCourt(Long courtId, List<MultipartFile> files) {
+        courtAccess.requireCanManage(courtId);
         var court = courts.findById(courtId).orElseThrow(() -> new NotFoundException("Court not found"));
         if (files == null || files.isEmpty())
             throw new BadRequestException("At least one image file is required");
@@ -79,6 +82,7 @@ public class LocalFileStorageServiceImpl implements FileStorageService {
     @Transactional
     public void deleteCourtImage(UUID imageId) {
         var image = images.findById(imageId).orElseThrow(() -> new NotFoundException("Court image not found"));
+        courtAccess.requireCanManage(image.getCourt().getId());
         deleteStoredFile(image.getFileName());
         images.delete(image);
     }

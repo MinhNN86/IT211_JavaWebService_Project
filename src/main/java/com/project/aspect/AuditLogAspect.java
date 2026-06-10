@@ -19,7 +19,8 @@ public class AuditLogAspect {
     @AfterReturning(pointcut = "execution(* com.project.modules.booking.service.impl.BookingServiceImpl.create(..))", returning = "result")
     public void success(BookingResponse result) {
         audit.log(result.customerUsername(), "CREATE_BOOKING", "Booked court " + result.courtId() + " on "
-                + result.bookingDate() + " at " + result.startTime() + "-" + result.endTime(), "SUCCESS");
+                + result.bookingDate() + " for time slots "
+                + result.timeSlots().stream().map(slot -> slot.startTime() + "-" + slot.endTime()).toList(), "SUCCESS");
     }
 
     @AfterThrowing(pointcut = "execution(* com.project.modules.booking.service.impl.BookingServiceImpl.create(..)) && args(request)", throwing = "error")

@@ -2,6 +2,8 @@ package com.project.modules.booking.entity;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 import jakarta.persistence.*;
 
@@ -27,8 +29,10 @@ public class Booking {
     private User customer;
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     private Court court;
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    private TimeSlot timeSlot;
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(name = "booking_time_slots", joinColumns = @JoinColumn(name = "booking_id"), inverseJoinColumns = @JoinColumn(name = "time_slot_id"))
+    @Builder.Default
+    private Set<TimeSlot> timeSlots = new LinkedHashSet<>();
     @Column(nullable = false)
     private LocalDate bookingDate;
     @Enumerated(EnumType.STRING)

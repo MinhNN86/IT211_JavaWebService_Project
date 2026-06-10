@@ -1,6 +1,8 @@
 -- Badminton Booking System - MySQL 8 schema
 -- Safe to run repeatedly: existing tables and data are preserved.
 -- For an existing BIGINT users.id schema, run migrate_users_id_to_uuid.sql once.
+-- For an existing single-time-slot booking schema, run migrate_booking_to_multiple_time_slots.sql once.
+-- For existing courts without per-court managers, run migrate_court_managers.sql once.
 
 CREATE DATABASE IF NOT EXISTS badminton_booking_db
     CHARACTER SET utf8mb4
@@ -43,6 +45,22 @@ CREATE TABLE IF NOT EXISTS courts (
     CONSTRAINT chk_courts_status CHECK (status IN ('ACTIVE', 'INACTIVE', 'MAINTENANCE'))
 ) ENGINE = InnoDB;
 
+CREATE TABLE IF NOT EXISTS court_managers (
+    court_id BIGINT NOT NULL,
+    manager_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    PRIMARY KEY (court_id, manager_id),
+    KEY idx_court_managers_manager (manager_id),
+    CONSTRAINT fk_court_managers_court FOREIGN KEY (court_id) REFERENCES courts (id) ON DELETE CASCADE,
+    CONSTRAINT fk_court_managers_manager FOREIGN KEY (manager_id) REFERENCES users (id)
+) ENGINE = InnoDB;
+
+-- Preserve access for existing courts by assigning all current managers only when a court has no manager yet.
+INSERT IGNORE INTO court_managers (court_id, manager_id)
+SELECT c.id, u.id
+FROM courts c
+JOIN users u ON u.role = 'MANAGER'
+WHERE NOT EXISTS (SELECT 1 FROM court_managers cm WHERE cm.court_id = c.id);
+
 CREATE TABLE IF NOT EXISTS court_images (
     id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
     court_id BIGINT NOT NULL,
@@ -77,7 +95,6 @@ CREATE TABLE IF NOT EXISTS bookings (
     id BIGINT NOT NULL AUTO_INCREMENT,
     customer_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
     court_id BIGINT NOT NULL,
-    time_slot_id BIGINT NOT NULL,
     booking_date DATE NOT NULL,
     status VARCHAR(32) NOT NULL DEFAULT 'PENDING',
     note VARCHAR(255) NULL,
@@ -85,14 +102,21 @@ CREATE TABLE IF NOT EXISTS bookings (
     updated_at DATETIME(6) NULL,
     PRIMARY KEY (id),
     KEY idx_bookings_customer (customer_id),
-    KEY idx_bookings_availability (court_id, booking_date, time_slot_id, status),
-    KEY idx_bookings_time_slot (time_slot_id),
+    KEY idx_bookings_availability (court_id, booking_date, status),
     CONSTRAINT fk_bookings_customer FOREIGN KEY (customer_id) REFERENCES users (id),
     CONSTRAINT fk_bookings_court FOREIGN KEY (court_id) REFERENCES courts (id),
-    CONSTRAINT fk_bookings_time_slot FOREIGN KEY (time_slot_id) REFERENCES time_slots (id),
     CONSTRAINT chk_bookings_status CHECK (
         status IN ('PENDING', 'CONFIRMED', 'REJECTED', 'CANCELLED', 'COMPLETED')
     )
+) ENGINE = InnoDB;
+
+CREATE TABLE IF NOT EXISTS booking_time_slots (
+    booking_id BIGINT NOT NULL,
+    time_slot_id BIGINT NOT NULL,
+    PRIMARY KEY (booking_id, time_slot_id),
+    KEY idx_booking_time_slots_time_slot (time_slot_id),
+    CONSTRAINT fk_booking_time_slots_booking FOREIGN KEY (booking_id) REFERENCES bookings (id) ON DELETE CASCADE,
+    CONSTRAINT fk_booking_time_slots_time_slot FOREIGN KEY (time_slot_id) REFERENCES time_slots (id)
 ) ENGINE = InnoDB;
 
 CREATE TABLE IF NOT EXISTS refresh_tokens (

@@ -125,6 +125,21 @@ flowchart LR
 Schema MySQL đầy đủ nằm tại `init.sql`. File sử dụng `CREATE DATABASE/TABLE IF NOT EXISTS`, vì vậy có thể chạy
 lặp lại mà không xóa dữ liệu hiện có.
 
+Nếu database đã được tạo từ phiên bản mỗi booking chỉ có một time slot, chạy migration một lần trước khi khởi động
+phiên bản mới:
+
+```bash
+mysql -u root -p < src/main/resources/migrate_booking_to_multiple_time_slots.sql
+```
+
+Nếu database đã có sân trước khi bổ sung phân quyền quản lý theo sân, chạy migration:
+
+```bash
+mysql -u root -p < src/main/resources/migrate_court_managers.sql
+```
+
+Migration gán các sân cũ chưa có quản lý cho toàn bộ manager hiện tại để không làm mất quyền truy cập đang có.
+
 Ứng dụng vẫn sử dụng JPA/Hibernate với:
 
 ```properties
@@ -141,7 +156,8 @@ erDiagram
     USERS ||--o{ REFRESH_TOKENS : owns
     USERS ||--o{ BOOKINGS : creates
     COURTS ||--o{ BOOKINGS : reserved_for
-    TIME_SLOTS ||--o{ BOOKINGS : scheduled_at
+    BOOKINGS ||--|{ BOOKING_TIME_SLOTS : contains
+    TIME_SLOTS ||--o{ BOOKING_TIME_SLOTS : scheduled_at
 
     USERS {
         bigint id PK
@@ -180,12 +196,16 @@ erDiagram
         bigint id PK
         bigint customer_id FK
         bigint court_id FK
-        bigint time_slot_id FK
         date booking_date
         varchar status
         varchar note
         datetime created_at
         datetime updated_at
+    }
+
+    BOOKING_TIME_SLOTS {
+        bigint booking_id PK, FK
+        bigint time_slot_id PK, FK
     }
 
     REFRESH_TOKENS {
@@ -223,7 +243,8 @@ Các bảng độc lập phục vụ audit:
 - Xóa sân là soft delete: chuyển `status` sang `INACTIVE`.
 - Xóa time slot là soft delete: chuyển `active` sang `false`.
 - Booking mới luôn có trạng thái `PENDING`.
-- Booking `PENDING` hoặc `CONFIRMED` sẽ chặn booking khác có cùng sân, ngày và time slot.
+- Một booking phải có ít nhất một time slot và không được chứa time slot trùng lặp.
+- Booking `PENDING` hoặc `CONFIRMED` sẽ chặn booking khác nếu trùng sân, ngày và bất kỳ time slot nào.
 - Khi tạo booking, sân được khóa bằng `PESSIMISTIC_WRITE` trong transaction để giảm race condition đặt trùng.
 - Hiện tại database chưa có unique constraint trực tiếp cho tổ hợp sân, ngày và time slot.
 
@@ -414,13 +435,18 @@ Ký hiệu quyền:
 | -------- | ----------------------------------------- | ------------- | ------------------------------------------------------------ | ------------------------ |
 | `GET`    | `/api/v1/courts`                          | Public        | `name?`, `status?`, `minPrice?`, `maxPrice?`, phân trang     | Tìm kiếm sân             |
 | `GET`    | `/api/v1/courts/{id}`                     | Public        | Path `id`                                                    | Lấy chi tiết sân         |
-| `POST`   | `/api/v1/manager/courts`                  | Manager/Admin | `name`, `description?`, `address`, `pricePerHour`            | Tạo sân                  |
+| `POST`   | `/api/v1/manager/courts`                  | Manager/Admin | `name`, `description?`, `address`, `pricePerHour`, `managerIds?` | Tạo sân               |
 | `PUT`    | `/api/v1/manager/courts/{id}`             | Manager/Admin | `name`, `description?`, `address`, `pricePerHour`, `status?` | Cập nhật sân             |
 | `DELETE` | `/api/v1/manager/courts/{id}`             | Manager/Admin | Path `id`                                                    | Soft delete sân          |
 | `POST`   | `/api/v1/manager/courts/{courtId}/images` | Manager/Admin | Multipart `files`                                            | Thêm nhiều ảnh vào sân   |
 | `DELETE` | `/api/v1/manager/courts/images/{imageId}` | Manager/Admin | UUID của ảnh                                                 | Xóa ảnh khỏi sân         |
+| `GET`    | `/api/v1/admin/courts/{courtId}/managers` | Admin         | Path `courtId`                                               | Xem quản lý của sân      |
+| `POST`   | `/api/v1/admin/courts/{courtId}/managers/{managerId}` | Admin | Path `courtId`, `managerId`                           | Thêm quản lý cho sân     |
+| `DELETE` | `/api/v1/admin/courts/{courtId}/managers/{managerId}` | Admin | Path `courtId`, `managerId`                           | Xóa quản lý khỏi sân     |
 
 Lưu ý: endpoint public lấy sân không tự động ẩn sân `INACTIVE` hoặc `MAINTENANCE`. Dùng query `status=ACTIVE` nếu chỉ muốn lấy sân đang hoạt động.
+Manager tạo sân sẽ tự trở thành quản lý đầu tiên. Admin tạo sân phải truyền ít nhất một `managerId`.
+Manager chỉ được cập nhật/xóa sân, quản lý ảnh và xử lý booking của các sân được gán. Admin có quyền trên mọi sân.
 
 ### Time slot
 
@@ -437,13 +463,14 @@ Lưu ý: endpoint public lấy sân không tự động ẩn sân `INACTIVE` ho�
 
 | Method | Endpoint                               | Quyền         | Request/query                                   | Mô tả                             |
 | ------ | -------------------------------------- | ------------- | ----------------------------------------------- | --------------------------------- |
-| `POST` | `/api/v1/customer/bookings`            | Customer      | `courtId`, `timeSlotId`, `bookingDate`, `note?` | Tạo booking                       |
+| `POST` | `/api/v1/customer/bookings`            | Customer      | `courtId`, `timeSlotIds`, `bookingDate`, `note?` | Tạo booking                       |
 | `GET`  | `/api/v1/customer/bookings`            | Customer      | Phân trang                                      | Lấy booking của customer hiện tại |
-| `GET`  | `/api/v1/manager/bookings`             | Manager/Admin | Phân trang                                      | Lấy toàn bộ booking               |
+| `GET`  | `/api/v1/manager/bookings`             | Manager/Admin | Phân trang                                      | Lấy booking của sân được quản lý; Admin lấy toàn bộ |
 | `GET`  | `/api/v1/manager/bookings/{id}`        | Manager/Admin | Path `id`                                       | Lấy booking theo ID               |
 | `PUT`  | `/api/v1/manager/bookings/{id}/status` | Manager/Admin | `status`                                        | Chuyển trạng thái booking         |
 
-`bookingDate` dùng định dạng `yyyy-MM-dd` và không được ở trong quá khứ.
+`bookingDate` dùng định dạng `yyyy-MM-dd` và không được ở trong quá khứ. `timeSlotIds` phải là mảng không rỗng,
+không chứa ID trùng lặp.
 
 ## Flow endpoint
 
@@ -488,10 +515,10 @@ Chi tiết:
 flowchart TD
     A[Customer gửi POST /customer/bookings] --> B[Validate request và ngày đặt]
     B --> C[Khóa bản ghi court bằng PESSIMISTIC_WRITE]
-    C --> D{Đã có PENDING hoặc CONFIRMED<br/>cùng court/date/time slot?}
+    C --> D{Đã có PENDING hoặc CONFIRMED<br/>trùng court/date/bất kỳ time slot?}
     D -- Có --> E[409 Conflict]
-    D -- Không --> F[Kiểm tra user và time slot tồn tại]
-    F --> G{Court ACTIVE và time slot active?}
+    D -- Không --> F[Kiểm tra user và các time slot tồn tại]
+    F --> G{Court ACTIVE và mọi time slot active?}
     G -- Không --> H[400 Bad Request]
     G -- Có --> I[Tạo booking PENDING]
     I --> J[AuditLogAspect ghi SUCCESS]
@@ -507,7 +534,7 @@ curl -X POST http://localhost:8080/api/v1/customer/bookings \
   -H 'Content-Type: application/json' \
   -d '{
     "courtId": 1,
-    "timeSlotId": 1,
+    "timeSlotIds": [1, 2],
     "bookingDate": "2026-06-11",
     "note": "Đặt sân buổi tối"
   }'

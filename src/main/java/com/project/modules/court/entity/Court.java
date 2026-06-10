@@ -2,12 +2,12 @@ package com.project.modules.court.entity;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 import jakarta.persistence.*;
 
 import com.project.common.enums.CourtStatus;
+import com.project.modules.user.entity.User;
 
 import lombok.*;
 
@@ -38,6 +38,10 @@ public class Court {
     @OrderBy("createdAt ASC")
     @Builder.Default
     private List<CourtImage> images = new ArrayList<>();
+    @ManyToMany
+    @JoinTable(name = "court_managers", joinColumns = @JoinColumn(name = "court_id"), inverseJoinColumns = @JoinColumn(name = "manager_id"))
+    @Builder.Default
+    private Set<User> managers = new HashSet<>();
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     @PrePersist

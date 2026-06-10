@@ -17,6 +17,7 @@ import com.project.modules.booking.mapper.BookingMapper;
 import com.project.modules.booking.repository.BookingRepository;
 import com.project.modules.booking.service.BookingService;
 import com.project.modules.court.repository.CourtRepository;
+import com.project.modules.court.service.CourtAccessService;
 import com.project.modules.timeslot.repository.TimeSlotRepository;
 import com.project.modules.user.repository.UserRepository;
 
@@ -33,20 +34,27 @@ public class BookingServiceImpl implements BookingService {
     private final BookingRepository bookings;
     private final UserRepository users;
     private final CourtRepository courts;
+    private final CourtAccessService courtAccess;
     private final TimeSlotRepository slots;
     private final BookingMapper mapper;
     public BookingResponse create(CreateBookingRequest r) {
         var court = courts.findByIdForUpdate(r.courtId()).orElseThrow(() -> new NotFoundException("Court not found"));
-        if (bookings.existsByCourtIdAndBookingDateAndTimeSlotIdAndStatusIn(r.courtId(), r.bookingDate(), r.timeSlotId(),
-                BLOCKING))
-            throw new ConflictException("Court is already booked for this time slot");
+        if (r.timeSlotIds() == null || r.timeSlotIds().isEmpty())
+            throw new BadRequestException("At least one time slot is required");
+        var slotIds = new LinkedHashSet<>(r.timeSlotIds());
+        if (slotIds.size() != r.timeSlotIds().size())
+            throw new BadRequestException("Time slot IDs must be unique");
+        var selectedSlots = slots.findAllById(slotIds);
+        if (selectedSlots.size() != slotIds.size())
+            throw new NotFoundException("One or more time slots not found");
+        if (court.getStatus() != CourtStatus.ACTIVE || selectedSlots.stream().anyMatch(slot -> !slot.isActive()))
+            throw new BadRequestException("Court or time slot is not available");
+        if (bookings.existsBlockingBooking(r.courtId(), r.bookingDate(), slotIds, BLOCKING))
+            throw new ConflictException("Court is already booked for one or more selected time slots");
         var user = users.findByUsername(SecurityUtils.currentUsername())
                 .orElseThrow(() -> new NotFoundException("User not found"));
-        var slot = slots.findById(r.timeSlotId()).orElseThrow(() -> new NotFoundException("Time slot not found"));
-        if (court.getStatus() != CourtStatus.ACTIVE || !slot.isActive())
-            throw new BadRequestException("Court or time slot is not available");
-        return mapper.toResponse(bookings.save(Booking.builder().customer(user).court(court).timeSlot(slot)
-                .bookingDate(r.bookingDate()).note(r.note()).build()));
+        return mapper.toResponse(bookings.save(Booking.builder().customer(user).court(court)
+                .timeSlots(new LinkedHashSet<>(selectedSlots)).bookingDate(r.bookingDate()).note(r.note()).build()));
     }
 
     @Transactional(readOnly = true)
@@ -57,17 +65,22 @@ public class BookingServiceImpl implements BookingService {
 
     @Transactional(readOnly = true)
     public PageResponse<BookingResponse> all(Pageable p) {
-        var page = bookings.findAll(p);
+        var page = SecurityUtils.hasRole("ADMIN")
+                ? bookings.findAll(p)
+                : bookings.findManagedBookings(SecurityUtils.currentUsername(), p);
         return PageResponse.from(page, page.stream().map(mapper::toResponse).toList());
     }
 
     @Transactional(readOnly = true)
     public BookingResponse findById(Long id) {
-        return mapper.toResponse(get(id));
+        var booking = get(id);
+        courtAccess.requireCanManage(booking.getCourt().getId());
+        return mapper.toResponse(booking);
     }
 
     public BookingResponse updateStatus(Long id, UpdateBookingStatusRequest r) {
         var b = get(id);
+        courtAccess.requireCanManage(b.getCourt().getId());
         if (!TRANSITIONS.getOrDefault(b.getStatus(), Set.of()).contains(r.status()))
             throw new BadRequestException("Invalid booking status transition");
         b.setStatus(r.status());
