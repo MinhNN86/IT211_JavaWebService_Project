@@ -1,13 +1,14 @@
 package com.project.modules.timeslot.dto.request;
 
-import java.math.BigDecimal;
 import java.time.LocalTime;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 import jakarta.validation.constraints.*;
 
 public record UpdateTimeSlotRequest(
-                @NotNull LocalTime startTime,
-                @NotNull LocalTime endTime,
-                @NotNull @Positive BigDecimal price,
-                Boolean active) {
+        @NotNull @JsonFormat(pattern = "HH:mm") LocalTime startTime,
+        @NotNull @JsonFormat(pattern = "HH:mm") LocalTime endTime,
+        @NotNull @Positive Integer price,
+        Boolean active) {
 }

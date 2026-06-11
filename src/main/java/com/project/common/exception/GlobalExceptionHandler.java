@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 import jakarta.servlet.http.HttpServletRequest;
 
 import org.springframework.http.*;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
@@ -16,11 +17,13 @@ import com.project.common.response.ErrorResponse;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
     @ExceptionHandler({BadRequestException.class, MethodArgumentNotValidException.class,
-            MaxUploadSizeExceededException.class})
+            HttpMessageNotReadableException.class, MaxUploadSizeExceededException.class})
     ResponseEntity<ErrorResponse> badRequest(Exception ex, HttpServletRequest req) {
         String message = ex instanceof MethodArgumentNotValidException validation
                 ? validation.getBindingResult().getFieldErrors().stream()
                         .map(e -> e.getField() + ": " + e.getDefaultMessage()).collect(Collectors.joining(", "))
+                : ex instanceof HttpMessageNotReadableException
+                        ? "Malformed JSON request"
                 : ex.getMessage();
         return error(HttpStatus.BAD_REQUEST, message, req);
     }

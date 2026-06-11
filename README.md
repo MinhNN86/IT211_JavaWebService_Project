@@ -197,7 +197,7 @@ Manager tạo sân sẽ tự được gán quản lý; Admin tạo sân phải t
 | `GET` | `/api/v1/manager/bookings/{id}` | Manager/Admin | Chi tiết booking |
 | `PUT` | `/api/v1/manager/bookings/{id}/status` | Manager/Admin | Cập nhật trạng thái booking |
 
-`startTime` phải nhỏ hơn `endTime`, dùng định dạng `"HH:mm:ss"`. `bookingDate` dùng `yyyy-MM-dd` và không được ở quá khứ.
+`startTime` phải nhỏ hơn `endTime`, dùng định dạng 24 giờ `"HH:mm"`. `bookingDate` dùng `yyyy-MM-dd` và không được ở quá khứ.
 
 ## Bảo mật
 

@@ -3,7 +3,6 @@ package com.project.modules.timeslot;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-import java.math.BigDecimal;
 import java.util.HashSet;
 
 import org.junit.jupiter.api.*;
@@ -26,8 +25,8 @@ import com.project.modules.user.repository.UserRepository;
 class TimeSlotAuthorizationIntegrationTest {
     private static final String CREATE_REQUEST = """
             {
-              "startTime": "06:01:00",
-              "endTime": "07:01:00",
+              "startTime": "06:00",
+              "endTime": "07:00",
               "price": 50000
             }
             """;
@@ -85,6 +84,62 @@ class TimeSlotAuthorizationIntegrationTest {
     }
 
     @Test
+    @WithMockUser(username = "manager", roles = "MANAGER")
+    void createRejectsOverlappingActiveTimeSlot() throws Exception {
+        timeSlots.save(com.project.modules.timeslot.entity.TimeSlot.builder().court(managedCourt)
+                .startTime(java.time.LocalTime.of(6, 0)).endTime(java.time.LocalTime.of(7, 0))
+                .price(50_000).build());
+
+        mockMvc.perform(post("/api/v1/manager/courts/{courtId}/time-slots", managedCourt.getId())
+                .contentType(MediaType.APPLICATION_JSON).content(createRequest("06:30", "07:30", "50000")))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Time slot overlaps an active time slot for this court"));
+    }
+
+    @Test
+    @WithMockUser(username = "manager", roles = "MANAGER")
+    void createOnlyAcceptsThirtyOrSixtyMinuteSlots() throws Exception {
+        mockMvc.perform(post("/api/v1/manager/courts/{courtId}/time-slots", managedCourt.getId())
+                .contentType(MediaType.APPLICATION_JSON).content(createRequest("06:00", "07:30", "50000")))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(post("/api/v1/manager/courts/{courtId}/time-slots", managedCourt.getId())
+                .contentType(MediaType.APPLICATION_JSON).content(createRequest("08:00:00", "08:30:00", "50000")))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(username = "manager", roles = "MANAGER")
+    void createRequiresThirtyMinuteTimeAlignment() throws Exception {
+        mockMvc.perform(post("/api/v1/manager/courts/{courtId}/time-slots", managedCourt.getId())
+                .contentType(MediaType.APPLICATION_JSON).content(createRequest("06:15", "06:45", "50000")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Start and end times must align to 30-minute intervals"));
+    }
+
+    @Test
+    @WithMockUser(username = "manager", roles = "MANAGER")
+    void createReactivatesInactiveTimeSlotWithNewPrice() throws Exception {
+        var inactiveSlot = timeSlots.save(com.project.modules.timeslot.entity.TimeSlot.builder().court(managedCourt)
+                .startTime(java.time.LocalTime.of(6, 0)).endTime(java.time.LocalTime.of(7, 0))
+                .price(50_000).active(false).build());
+
+        mockMvc.perform(post("/api/v1/manager/courts/{courtId}/time-slots", managedCourt.getId())
+                .contentType(MediaType.APPLICATION_JSON).content(createRequest("06:00", "07:00", "60000")))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.data.id").value(inactiveSlot.getId()))
+                .andExpect(jsonPath("$.data.active").value(true)).andExpect(jsonPath("$.data.price").value(60000));
+
+        Assertions.assertEquals(1, timeSlots.findByCourtIdOrderByStartTime(managedCourt.getId()).size());
+    }
+
+    @Test
+    @WithMockUser(username = "manager", roles = "MANAGER")
+    void malformedTimeJsonReturnsBadRequest() throws Exception {
+        mockMvc.perform(post("/api/v1/manager/courts/{courtId}/time-slots", managedCourt.getId())
+                .contentType(MediaType.APPLICATION_JSON).content(createRequest("invalid", "07:00", "50000")))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("Malformed JSON request"));
+    }
+
+    @Test
     @WithMockUser(roles = "CUSTOMER")
     void customerCannotManageTimeSlots() throws Exception {
         mockMvc.perform(post("/api/v1/manager/courts/{courtId}/time-slots", managedCourt.getId())
@@ -95,10 +150,10 @@ class TimeSlotAuthorizationIntegrationTest {
     @WithMockUser(username = "manager", roles = "MANAGER")
     void managerCanCreateTimeSlotsInBulk() throws Exception {
         mockMvc.perform(post("/api/v1/manager/courts/{courtId}/time-slots/bulk", managedCourt.getId())
-                .contentType(MediaType.APPLICATION_JSON).content(bulkCreateRequest("06:00:00", "08:00:00", 30)))
+                .contentType(MediaType.APPLICATION_JSON).content(bulkCreateRequest("06:00", "08:00", 30)))
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.data.length()").value(4))
-                .andExpect(jsonPath("$.data[0].startTime").value("06:00:00"))
-                .andExpect(jsonPath("$.data[3].endTime").value("08:00:00"))
+                .andExpect(jsonPath("$.data[0].startTime").value("06:00"))
+                .andExpect(jsonPath("$.data[3].endTime").value("08:00"))
                 .andExpect(jsonPath("$.data[0].price").value(50000));
     }
 
@@ -106,13 +161,13 @@ class TimeSlotAuthorizationIntegrationTest {
     @WithMockUser(username = "manager", roles = "MANAGER")
     void bulkCreateRejectsInvalidDurationAndNonDivisibleRange() throws Exception {
         mockMvc.perform(post("/api/v1/manager/courts/{courtId}/time-slots/bulk", managedCourt.getId())
-                .contentType(MediaType.APPLICATION_JSON).content(bulkCreateRequest("06:00:00", "08:00:00", 45)))
+                .contentType(MediaType.APPLICATION_JSON).content(bulkCreateRequest("06:00", "08:00", 45)))
                 .andExpect(status().isBadRequest());
         mockMvc.perform(post("/api/v1/manager/courts/{courtId}/time-slots/bulk", managedCourt.getId())
-                .contentType(MediaType.APPLICATION_JSON).content(bulkCreateRequest("06:00:00", "07:45:00", 60)))
+                .contentType(MediaType.APPLICATION_JSON).content(bulkCreateRequest("06:00", "07:45", 60)))
                 .andExpect(status().isBadRequest());
         mockMvc.perform(post("/api/v1/manager/courts/{courtId}/time-slots/bulk", managedCourt.getId())
-                .contentType(MediaType.APPLICATION_JSON).content(bulkCreateRequest("06:00:00", "07:00:01", 60)))
+                .contentType(MediaType.APPLICATION_JSON).content(bulkCreateRequest("06:00:00", "07:00:00", 60)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -121,10 +176,10 @@ class TimeSlotAuthorizationIntegrationTest {
     void bulkCreateIsAtomicWhenTimeSlotAlreadyExists() throws Exception {
         timeSlots.save(com.project.modules.timeslot.entity.TimeSlot.builder().court(managedCourt)
                 .startTime(java.time.LocalTime.of(7, 0)).endTime(java.time.LocalTime.of(8, 0))
-                .price(BigDecimal.valueOf(50_000)).build());
+                .price(50_000).build());
 
         mockMvc.perform(post("/api/v1/manager/courts/{courtId}/time-slots/bulk", managedCourt.getId())
-                .contentType(MediaType.APPLICATION_JSON).content(bulkCreateRequest("06:00:00", "09:00:00", 60)))
+                .contentType(MediaType.APPLICATION_JSON).content(bulkCreateRequest("06:00", "09:00", 60)))
                 .andExpect(status().isConflict());
 
         Assertions.assertEquals(1, timeSlots.findByCourtIdOrderByStartTime(managedCourt.getId()).size());
@@ -141,11 +196,21 @@ class TimeSlotAuthorizationIntegrationTest {
                 """.formatted(startTime, endTime, durationMinutes);
     }
 
+    private String createRequest(String startTime, String endTime, String price) {
+        return """
+                {
+                  "startTime": "%s",
+                  "endTime": "%s",
+                  "price": %s
+                }
+                """.formatted(startTime, endTime, price);
+    }
+
     private String updateRequest() {
         return """
                 {
-                  "startTime": "06:30:00",
-                  "endTime": "07:30:00",
+                  "startTime": "06:30",
+                  "endTime": "07:30",
                   "price": 60000,
                   "active": true
                 }

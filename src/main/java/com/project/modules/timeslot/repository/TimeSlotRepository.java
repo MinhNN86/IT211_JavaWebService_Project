@@ -13,8 +13,14 @@ public interface TimeSlotRepository extends JpaRepository<TimeSlot, Long> {
 
     Optional<TimeSlot> findByIdAndCourtId(Long id, Long courtId);
 
-    boolean existsByCourtIdAndStartTimeAndEndTime(Long courtId, LocalTime startTime, LocalTime endTime);
+    Optional<TimeSlot> findByCourtIdAndStartTimeAndEndTime(Long courtId, LocalTime startTime, LocalTime endTime);
 
-    boolean existsByCourtIdAndStartTimeAndEndTimeAndIdNot(Long courtId, LocalTime startTime, LocalTime endTime,
-            Long id);
+    boolean existsByCourtIdAndActiveTrueAndStartTimeLessThanAndEndTimeGreaterThan(
+            Long courtId, LocalTime endTime, LocalTime startTime);
+
+    boolean existsByCourtIdAndActiveTrueAndIdNotAndStartTimeLessThanAndEndTimeGreaterThan(
+            Long courtId, Long id, LocalTime endTime, LocalTime startTime);
+
+    boolean existsByCourtIdAndIdNotAndStartTimeAndEndTime(
+            Long courtId, Long id, LocalTime startTime, LocalTime endTime);
 }

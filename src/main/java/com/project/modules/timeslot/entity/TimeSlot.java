@@ -1,6 +1,5 @@
 package com.project.modules.timeslot.entity;
 
-import java.math.BigDecimal;
 import java.time.LocalTime;
 
 import jakarta.persistence.*;
@@ -28,8 +27,8 @@ public class TimeSlot {
     private LocalTime startTime;
     @Column(name = "end_time", nullable = false)
     private LocalTime endTime;
-    @Column(nullable = false, precision = 12, scale = 2)
-    private BigDecimal price;
+    @Column(nullable = false)
+    private Integer price;
     @Column(nullable = false)
     @Builder.Default
     private boolean active = true;

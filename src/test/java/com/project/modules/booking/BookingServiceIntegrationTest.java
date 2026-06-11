@@ -3,7 +3,6 @@ package com.project.modules.booking;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.math.BigDecimal;
 import java.time.*;
 import java.util.List;
 
@@ -105,6 +104,6 @@ class BookingServiceIntegrationTest {
 
     private TimeSlot createTimeSlot(Court court, LocalTime start, LocalTime end) {
         return timeSlots.save(TimeSlot.builder().court(court).startTime(start).endTime(end)
-                .price(BigDecimal.valueOf(50_000)).build());
+                .price(50_000).build());
     }
 }

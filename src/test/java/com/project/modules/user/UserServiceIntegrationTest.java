@@ -2,7 +2,6 @@ package com.project.modules.user;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -73,7 +72,7 @@ class UserServiceIntegrationTest {
         var court = courts.save(Court.builder().name("Managed court").address("Address")
                 .managers(new HashSet<>(java.util.Set.of(user))).build());
         var timeSlot = timeSlots.save(TimeSlot.builder().court(court).startTime(LocalTime.of(18, 0))
-                .endTime(LocalTime.of(19, 0)).price(BigDecimal.valueOf(100_000)).build());
+                .endTime(LocalTime.of(19, 0)).price(100_000).build());
         bookings.save(Booking.builder().customer(user).court(court).bookingDate(LocalDate.now().plusDays(1))
                 .timeSlots(new LinkedHashSet<>(java.util.Set.of(timeSlot))).build());
         createRefreshToken(user);

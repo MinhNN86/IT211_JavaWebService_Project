@@ -1,6 +1,5 @@
 package com.project.modules.timeslot.service.impl;
 
-import java.math.BigDecimal;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -46,15 +45,17 @@ public class TimeSlotServiceImpl implements TimeSlotService {
     @Override
     public TimeSlotResponse create(Long courtId, CreateTimeSlotRequest request) {
         courtAccessService.requireCanManage(courtId);
-        Court court = requireCourt(courtId);
+        Court court = requireCourtForUpdate(courtId);
         validateTimeRange(request.startTime(), request.endTime());
+        validateTimeAlignment(request.startTime(), request.endTime());
+        validateSlotDuration(request.startTime(), request.endTime());
 
-        if (timeSlotRepository.existsByCourtIdAndStartTimeAndEndTime(
-                courtId, request.startTime(), request.endTime())) {
-            throw new ConflictException("Time slot already exists for this court");
-        }
+        requireNoActiveOverlap(courtId, request.startTime(), request.endTime());
 
-        TimeSlot timeSlot = buildTimeSlot(court, request.startTime(), request.endTime(), request.price());
+        TimeSlot timeSlot = timeSlotRepository
+                .findByCourtIdAndStartTimeAndEndTime(courtId, request.startTime(), request.endTime())
+                .map(existing -> reactivate(existing, request.price()))
+                .orElseGet(() -> buildTimeSlot(court, request.startTime(), request.endTime(), request.price()));
         TimeSlot savedTimeSlot = timeSlotRepository.save(timeSlot);
 
         return toResponse(savedTimeSlot);
@@ -63,8 +64,9 @@ public class TimeSlotServiceImpl implements TimeSlotService {
     @Override
     public List<TimeSlotResponse> createBulk(Long courtId, BulkCreateTimeSlotRequest request) {
         courtAccessService.requireCanManage(courtId);
-        Court court = requireCourt(courtId);
+        Court court = requireCourtForUpdate(courtId);
         validateTimeRange(request.startTime(), request.endTime());
+        validateTimeAlignment(request.startTime(), request.endTime());
         validateDuration(request.startTime(), request.endTime(), request.durationMinutes());
 
         List<TimeSlot> timeSlots = new ArrayList<>();
@@ -72,12 +74,14 @@ public class TimeSlotServiceImpl implements TimeSlotService {
                 startTime = startTime.plusMinutes(request.durationMinutes())) {
             LocalTime endTime = startTime.plusMinutes(request.durationMinutes());
 
-            if (timeSlotRepository.existsByCourtIdAndStartTimeAndEndTime(courtId, startTime, endTime)) {
-                throw new ConflictException(
-                        "Time slot already exists for this court: " + startTime + " - " + endTime);
-            }
+            requireNoActiveOverlap(courtId, startTime, endTime);
 
-            timeSlots.add(buildTimeSlot(court, startTime, endTime, request.price()));
+            TimeSlot timeSlot = timeSlotRepository.findByCourtIdAndStartTimeAndEndTime(courtId, startTime, endTime)
+                    .orElse(null);
+            timeSlot = timeSlot == null
+                    ? buildTimeSlot(court, startTime, endTime, request.price())
+                    : reactivate(timeSlot, request.price());
+            timeSlots.add(timeSlot);
         }
 
         return timeSlotRepository.saveAll(timeSlots).stream()
@@ -88,11 +92,19 @@ public class TimeSlotServiceImpl implements TimeSlotService {
     @Override
     public TimeSlotResponse update(Long courtId, Long id, UpdateTimeSlotRequest request) {
         courtAccessService.requireCanManage(courtId);
+        requireCourtForUpdate(courtId);
         validateTimeRange(request.startTime(), request.endTime());
+        validateTimeAlignment(request.startTime(), request.endTime());
+        validateSlotDuration(request.startTime(), request.endTime());
         TimeSlot timeSlot = findTimeSlot(courtId, id);
 
-        if (timeSlotRepository.existsByCourtIdAndStartTimeAndEndTimeAndIdNot(
-                courtId, request.startTime(), request.endTime(), id)) {
+        boolean willBeActive = request.active() == null ? timeSlot.isActive() : request.active();
+        if (willBeActive && timeSlotRepository.existsByCourtIdAndActiveTrueAndIdNotAndStartTimeLessThanAndEndTimeGreaterThan(
+                courtId, id, request.endTime(), request.startTime())) {
+            throw new ConflictException("Time slot overlaps an active time slot for this court");
+        }
+        if (timeSlotRepository.existsByCourtIdAndIdNotAndStartTimeAndEndTime(
+                courtId, id, request.startTime(), request.endTime())) {
             throw new ConflictException("Time slot already exists for this court");
         }
 
@@ -109,6 +121,7 @@ public class TimeSlotServiceImpl implements TimeSlotService {
     @Override
     public void delete(Long courtId, Long id) {
         courtAccessService.requireCanManage(courtId);
+        requireCourtForUpdate(courtId);
         TimeSlot timeSlot = findTimeSlot(courtId, id);
         timeSlot.setActive(false);
     }
@@ -132,8 +145,44 @@ public class TimeSlotServiceImpl implements TimeSlotService {
         }
     }
 
+    private void validateSlotDuration(LocalTime startTime, LocalTime endTime) {
+        long durationMinutes = ChronoUnit.MINUTES.between(startTime, endTime);
+        boolean hasWholeMinuteDuration = startTime.plusMinutes(durationMinutes).equals(endTime);
+        if (!hasWholeMinuteDuration || (durationMinutes != 30 && durationMinutes != 60)) {
+            throw new BadRequestException("Time slot duration must be 30 or 60 minutes");
+        }
+    }
+
+    private void validateTimeAlignment(LocalTime startTime, LocalTime endTime) {
+        if (!isAlignedToThirtyMinutes(startTime) || !isAlignedToThirtyMinutes(endTime)) {
+            throw new BadRequestException("Start and end times must align to 30-minute intervals");
+        }
+    }
+
+    private boolean isAlignedToThirtyMinutes(LocalTime time) {
+        return time.getMinute() % 30 == 0 && time.getSecond() == 0 && time.getNano() == 0;
+    }
+
+    private void requireNoActiveOverlap(Long courtId, LocalTime startTime, LocalTime endTime) {
+        if (timeSlotRepository.existsByCourtIdAndActiveTrueAndStartTimeLessThanAndEndTimeGreaterThan(
+                courtId, endTime, startTime)) {
+            throw new ConflictException("Time slot overlaps an active time slot for this court");
+        }
+    }
+
+    private TimeSlot reactivate(TimeSlot timeSlot, Integer price) {
+        timeSlot.setPrice(price);
+        timeSlot.setActive(true);
+        return timeSlot;
+    }
+
     private Court requireCourt(Long courtId) {
         return courtRepository.findById(courtId)
+                .orElseThrow(() -> new NotFoundException("Court not found"));
+    }
+
+    private Court requireCourtForUpdate(Long courtId) {
+        return courtRepository.findByIdForUpdate(courtId)
                 .orElseThrow(() -> new NotFoundException("Court not found"));
     }
 
@@ -142,7 +191,7 @@ public class TimeSlotServiceImpl implements TimeSlotService {
                 .orElseThrow(() -> new NotFoundException("Time slot not found"));
     }
 
-    private TimeSlot buildTimeSlot(Court court, LocalTime startTime, LocalTime endTime, BigDecimal price) {
+    private TimeSlot buildTimeSlot(Court court, LocalTime startTime, LocalTime endTime, Integer price) {
         return TimeSlot.builder()
                 .court(court)
                 .startTime(startTime)

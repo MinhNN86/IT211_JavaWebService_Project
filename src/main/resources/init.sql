@@ -104,7 +104,7 @@ CREATE TABLE IF NOT EXISTS time_slots (
     court_id BIGINT NOT NULL,
     start_time TIME(6) NOT NULL,
     end_time TIME(6) NOT NULL,
-    price DECIMAL(12, 2) NOT NULL,
+    price INT NOT NULL,
     active BOOLEAN NOT NULL DEFAULT TRUE,
 
     PRIMARY KEY (id),
@@ -114,9 +114,7 @@ CREATE TABLE IF NOT EXISTS time_slots (
     CONSTRAINT fk_time_slots_court
         FOREIGN KEY (court_id) REFERENCES courts (id) ON DELETE CASCADE,
     CONSTRAINT chk_time_slots_time
-        CHECK (start_time < end_time),
-    CONSTRAINT chk_time_slots_price
-        CHECK (price > 0)
+        CHECK (start_time < end_time)
 ) ENGINE = InnoDB;
 
 -- ---------------------------------------------------------------------------
