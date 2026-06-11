@@ -453,6 +453,45 @@
           }
         },
         {
+          "name": "Bulk Create Time Slots",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Creates eight 30-minute time slots', function () {",
+                  "    const data = pm.response.json().data;",
+                  "    pm.expect(data).to.be.an('array').with.lengthOf(8);",
+                  "    pm.expect(data[0].startTime).to.eql('06:00:00');",
+                  "    pm.expect(data[7].endTime).to.eql('10:00:00');",
+                  "    pm.expect(data.every(slot => Number(slot.price) === 50000)).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"startTime\": \"06:00:00\",\n  \"endTime\": \"10:00:00\",\n  \"durationMinutes\": 30,\n  \"price\": 50000\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/manager/courts/{{courtId}}/time-slots/bulk",
+            "description": "Tạo nhanh 8 khung giờ, mỗi khung 30 phút, từ 06:00 đến 10:00. Có thể đổi durationMinutes thành 60."
+          }
+        },
+        {
           "name": "Update Time Slot",
           "request": {
             "method": "PUT",

@@ -10,6 +10,8 @@ public interface TimeSlotService {
 
     TimeSlotResponse create(Long courtId, CreateTimeSlotRequest r);
 
+    List<TimeSlotResponse> createBulk(Long courtId, BulkCreateTimeSlotRequest r);
+
     TimeSlotResponse update(Long courtId, Long id, UpdateTimeSlotRequest r);
 
     void delete(Long courtId, Long id);

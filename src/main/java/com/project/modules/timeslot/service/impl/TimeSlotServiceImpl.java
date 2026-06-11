@@ -1,6 +1,8 @@
 package com.project.modules.timeslot.service.impl;
 
 import java.time.LocalTime;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -42,6 +44,24 @@ public class TimeSlotServiceImpl implements TimeSlotService {
                 .price(r.price()).build()));
     }
 
+    public List<TimeSlotResponse> createBulk(Long courtId, BulkCreateTimeSlotRequest r) {
+        courtAccess.requireCanManage(courtId);
+        var court = requireCourt(courtId);
+        validate(r.startTime(), r.endTime());
+        validateDuration(r.startTime(), r.endTime(), r.durationMinutes());
+
+        var timeSlots = new ArrayList<TimeSlot>();
+        for (var start = r.startTime(); start.isBefore(r.endTime()); start = start.plusMinutes(r.durationMinutes())) {
+            var end = start.plusMinutes(r.durationMinutes());
+            if (repository.existsByCourtIdAndStartTimeAndEndTime(courtId, start, end))
+                throw new ConflictException("Time slot already exists for this court: " + start + " - " + end);
+            timeSlots.add(
+                    TimeSlot.builder().court(court).startTime(start).endTime(end).price(r.price()).build());
+        }
+
+        return repository.saveAll(timeSlots).stream().map(this::map).toList();
+    }
+
     public TimeSlotResponse update(Long courtId, Long id, UpdateTimeSlotRequest r) {
         courtAccess.requireCanManage(courtId);
         validate(r.startTime(), r.endTime());
@@ -64,6 +84,14 @@ public class TimeSlotServiceImpl implements TimeSlotService {
     private void validate(LocalTime start, LocalTime end) {
         if (!start.isBefore(end))
             throw new BadRequestException("Start time must be before end time");
+    }
+
+    private void validateDuration(LocalTime start, LocalTime end, int durationMinutes) {
+        if (durationMinutes != 30 && durationMinutes != 60)
+            throw new BadRequestException("Duration must be 30 or 60 minutes");
+        var rangeMinutes = ChronoUnit.MINUTES.between(start, end);
+        if (!start.plusMinutes(rangeMinutes).equals(end) || rangeMinutes % durationMinutes != 0)
+            throw new BadRequestException("Time range must be divisible by duration");
     }
 
     private Court requireCourt(Long courtId) {

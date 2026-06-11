@@ -37,6 +37,7 @@ public class BookingServiceImpl implements BookingService {
     private final CourtAccessService courtAccess;
     private final TimeSlotRepository slots;
     private final BookingMapper mapper;
+
     public BookingResponse create(CreateBookingRequest r) {
         var court = courts.findByIdForUpdate(r.courtId()).orElseThrow(() -> new NotFoundException("Court not found"));
         if (r.timeSlotIds() == null || r.timeSlotIds().isEmpty())

@@ -30,6 +30,13 @@ public class TimeSlotController {
         return ResponseEntity.status(201).body(ApiResponse.success("Time slot created", service.create(courtId, r)));
     }
 
+    @PostMapping("/api/v1/manager/courts/{courtId}/time-slots/bulk")
+    ResponseEntity<ApiResponse<List<TimeSlotResponse>>> createBulk(@PathVariable Long courtId,
+            @Valid @RequestBody BulkCreateTimeSlotRequest r) {
+        return ResponseEntity.status(201)
+                .body(ApiResponse.success("Time slots created", service.createBulk(courtId, r)));
+    }
+
     @PutMapping("/api/v1/manager/courts/{courtId}/time-slots/{id}")
     ApiResponse<TimeSlotResponse> update(@PathVariable Long courtId, @PathVariable Long id,
             @Valid @RequestBody UpdateTimeSlotRequest r) {

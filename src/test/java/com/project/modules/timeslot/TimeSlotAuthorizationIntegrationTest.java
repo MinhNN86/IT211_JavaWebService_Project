@@ -3,6 +3,7 @@ package com.project.modules.timeslot;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import java.math.BigDecimal;
 import java.util.HashSet;
 
 import org.junit.jupiter.api.*;
@@ -16,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.project.modules.court.entity.Court;
 import com.project.modules.court.repository.CourtRepository;
+import com.project.modules.timeslot.repository.TimeSlotRepository;
 import com.project.modules.user.repository.UserRepository;
 
 @SpringBootTest
@@ -36,6 +38,8 @@ class TimeSlotAuthorizationIntegrationTest {
     private CourtRepository courts;
     @Autowired
     private UserRepository users;
+    @Autowired
+    private TimeSlotRepository timeSlots;
 
     private Court managedCourt;
     private Court otherCourt;
@@ -85,6 +89,56 @@ class TimeSlotAuthorizationIntegrationTest {
     void customerCannotManageTimeSlots() throws Exception {
         mockMvc.perform(post("/api/v1/manager/courts/{courtId}/time-slots", managedCourt.getId())
                 .contentType(MediaType.APPLICATION_JSON).content(CREATE_REQUEST)).andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = "manager", roles = "MANAGER")
+    void managerCanCreateTimeSlotsInBulk() throws Exception {
+        mockMvc.perform(post("/api/v1/manager/courts/{courtId}/time-slots/bulk", managedCourt.getId())
+                .contentType(MediaType.APPLICATION_JSON).content(bulkCreateRequest("06:00:00", "08:00:00", 30)))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.data.length()").value(4))
+                .andExpect(jsonPath("$.data[0].startTime").value("06:00:00"))
+                .andExpect(jsonPath("$.data[3].endTime").value("08:00:00"))
+                .andExpect(jsonPath("$.data[0].price").value(50000));
+    }
+
+    @Test
+    @WithMockUser(username = "manager", roles = "MANAGER")
+    void bulkCreateRejectsInvalidDurationAndNonDivisibleRange() throws Exception {
+        mockMvc.perform(post("/api/v1/manager/courts/{courtId}/time-slots/bulk", managedCourt.getId())
+                .contentType(MediaType.APPLICATION_JSON).content(bulkCreateRequest("06:00:00", "08:00:00", 45)))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(post("/api/v1/manager/courts/{courtId}/time-slots/bulk", managedCourt.getId())
+                .contentType(MediaType.APPLICATION_JSON).content(bulkCreateRequest("06:00:00", "07:45:00", 60)))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(post("/api/v1/manager/courts/{courtId}/time-slots/bulk", managedCourt.getId())
+                .contentType(MediaType.APPLICATION_JSON).content(bulkCreateRequest("06:00:00", "07:00:01", 60)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(username = "manager", roles = "MANAGER")
+    void bulkCreateIsAtomicWhenTimeSlotAlreadyExists() throws Exception {
+        timeSlots.save(com.project.modules.timeslot.entity.TimeSlot.builder().court(managedCourt)
+                .startTime(java.time.LocalTime.of(7, 0)).endTime(java.time.LocalTime.of(8, 0))
+                .price(BigDecimal.valueOf(50_000)).build());
+
+        mockMvc.perform(post("/api/v1/manager/courts/{courtId}/time-slots/bulk", managedCourt.getId())
+                .contentType(MediaType.APPLICATION_JSON).content(bulkCreateRequest("06:00:00", "09:00:00", 60)))
+                .andExpect(status().isConflict());
+
+        Assertions.assertEquals(1, timeSlots.findByCourtIdOrderByStartTime(managedCourt.getId()).size());
+    }
+
+    private String bulkCreateRequest(String startTime, String endTime, int durationMinutes) {
+        return """
+                {
+                  "startTime": "%s",
+                  "endTime": "%s",
+                  "durationMinutes": %d,
+                  "price": 50000
+                }
+                """.formatted(startTime, endTime, durationMinutes);
     }
 
     private String updateRequest() {
