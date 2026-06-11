@@ -6,11 +6,11 @@ import com.project.modules.timeslot.dto.request.*;
 import com.project.modules.timeslot.dto.response.TimeSlotResponse;
 
 public interface TimeSlotService {
-    List<TimeSlotResponse> findAll();
+    List<TimeSlotResponse> findByCourt(Long courtId);
 
-    TimeSlotResponse create(CreateTimeSlotRequest r);
+    TimeSlotResponse create(Long courtId, CreateTimeSlotRequest r);
 
-    TimeSlotResponse update(Long id, UpdateTimeSlotRequest r);
+    TimeSlotResponse update(Long courtId, Long id, UpdateTimeSlotRequest r);
 
-    void delete(Long id);
+    void delete(Long courtId, Long id);
 }

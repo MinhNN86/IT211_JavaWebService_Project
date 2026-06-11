@@ -56,8 +56,8 @@ class BookingServiceIntegrationTest {
     @Test
     void createsOneBookingWithMultipleTimeSlots() {
         var court = createCourt();
-        var first = createTimeSlot(LocalTime.of(18, 0), LocalTime.of(19, 0));
-        var second = createTimeSlot(LocalTime.of(19, 0), LocalTime.of(20, 0));
+        var first = createTimeSlot(court, LocalTime.of(18, 0), LocalTime.of(19, 0));
+        var second = createTimeSlot(court, LocalTime.of(19, 0), LocalTime.of(20, 0));
 
         var response = service.create(request(court, List.of(first.getId(), second.getId())));
 
@@ -68,8 +68,8 @@ class BookingServiceIntegrationTest {
     @Test
     void rejectsBookingWhenAnySelectedTimeSlotIsAlreadyBooked() {
         var court = createCourt();
-        var first = createTimeSlot(LocalTime.of(18, 0), LocalTime.of(19, 0));
-        var second = createTimeSlot(LocalTime.of(19, 0), LocalTime.of(20, 0));
+        var first = createTimeSlot(court, LocalTime.of(18, 0), LocalTime.of(19, 0));
+        var second = createTimeSlot(court, LocalTime.of(19, 0), LocalTime.of(20, 0));
         service.create(request(court, List.of(first.getId())));
 
         assertThatThrownBy(() -> service.create(request(court, List.of(first.getId(), second.getId()))))
@@ -79,9 +79,19 @@ class BookingServiceIntegrationTest {
     @Test
     void rejectsDuplicateTimeSlotIds() {
         var court = createCourt();
-        var slot = createTimeSlot(LocalTime.of(18, 0), LocalTime.of(19, 0));
+        var slot = createTimeSlot(court, LocalTime.of(18, 0), LocalTime.of(19, 0));
 
         assertThatThrownBy(() -> service.create(request(court, List.of(slot.getId(), slot.getId()))))
+                .isInstanceOf(BadRequestException.class);
+    }
+
+    @Test
+    void rejectsTimeSlotFromAnotherCourt() {
+        var selectedCourt = createCourt();
+        var otherCourt = createCourt();
+        var otherCourtSlot = createTimeSlot(otherCourt, LocalTime.of(18, 0), LocalTime.of(19, 0));
+
+        assertThatThrownBy(() -> service.create(request(selectedCourt, List.of(otherCourtSlot.getId()))))
                 .isInstanceOf(BadRequestException.class);
     }
 
@@ -90,12 +100,11 @@ class BookingServiceIntegrationTest {
     }
 
     private Court createCourt() {
-        return courts.save(Court.builder().name("Court 1").address("Address")
-                .pricePerHour(BigDecimal.valueOf(100_000)).build());
+        return courts.save(Court.builder().name("Court 1").address("Address").build());
     }
 
-    private TimeSlot createTimeSlot(LocalTime start, LocalTime end) {
-        return timeSlots
-                .save(TimeSlot.builder().startTime(start).endTime(end).price(BigDecimal.valueOf(50_000)).build());
+    private TimeSlot createTimeSlot(Court court, LocalTime start, LocalTime end) {
+        return timeSlots.save(TimeSlot.builder().court(court).startTime(start).endTime(end)
+                .price(BigDecimal.valueOf(50_000)).build());
     }
 }

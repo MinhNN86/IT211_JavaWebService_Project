@@ -10,7 +10,6 @@ import org.hibernate.annotations.UuidGenerator;
 import org.hibernate.type.SqlTypes;
 
 import com.project.common.enums.RoleName;
-import com.project.common.enums.UserStatus;
 
 import lombok.*;
 
@@ -36,10 +35,9 @@ public class User {
     @Column(nullable = false)
     private String password;
     private String phone;
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "is_active", nullable = false)
     @Builder.Default
-    private UserStatus status = UserStatus.ACTIVE;
+    private boolean active = true;
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default

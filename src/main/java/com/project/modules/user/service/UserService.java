@@ -17,6 +17,8 @@ public interface UserService {
 
     UserResponse update(UUID id, UpdateUserRequest request);
 
+    UserResponse disable(UUID id);
+
     void delete(UUID id);
 
     UserResponse profile();

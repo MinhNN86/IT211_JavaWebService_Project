@@ -1,7 +1,5 @@
 package com.project.modules.court.controller;
 
-import java.math.BigDecimal;
-
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,9 +17,8 @@ public class CourtController {
     private final CourtService service;
     @GetMapping
     ApiResponse<PageResponse<CourtResponse>> all(@RequestParam(required = false) String name,
-            @RequestParam(required = false) CourtStatus status, @RequestParam(required = false) BigDecimal minPrice,
-            @RequestParam(required = false) BigDecimal maxPrice, Pageable p) {
-        return ApiResponse.success("Courts retrieved", service.findAll(name, status, minPrice, maxPrice, p));
+            @RequestParam(required = false) CourtStatus status, Pageable p) {
+        return ApiResponse.success("Courts retrieved", service.findAll(name, status, p));
     }
 
     @GetMapping("/{id}")

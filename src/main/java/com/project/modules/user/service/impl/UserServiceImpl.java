@@ -11,6 +11,9 @@ import com.project.common.enums.*;
 import com.project.common.exception.*;
 import com.project.common.response.PageResponse;
 import com.project.common.util.SecurityUtils;
+import com.project.modules.audit.repository.AuditLogRepository;
+import com.project.modules.auth.repository.RefreshTokenRepository;
+import com.project.modules.booking.repository.BookingRepository;
 import com.project.modules.court.repository.CourtRepository;
 import com.project.modules.user.dto.request.*;
 import com.project.modules.user.dto.response.UserResponse;
@@ -29,6 +32,9 @@ public class UserServiceImpl implements UserService {
     private final UserMapper mapper;
     private final PasswordEncoder encoder;
     private final CourtRepository courts;
+    private final BookingRepository bookings;
+    private final RefreshTokenRepository refreshTokens;
+    private final AuditLogRepository auditLogs;
     @Transactional(readOnly = true)
     public PageResponse<UserResponse> findAll(String keyword, Pageable pageable) {
         var page = users.search(keyword, pageable);
@@ -51,21 +57,31 @@ public class UserServiceImpl implements UserService {
 
     public UserResponse update(UUID id, UpdateUserRequest r) {
         var user = get(id);
-        requireNotAssignedToCourt(user, r.status(), r.role());
+        requireNotAssignedToCourt(user, r.role());
         user.setFullName(r.fullName());
         user.setEmail(r.email());
         user.setPhone(r.phone());
-        if (r.status() != null)
-            user.setStatus(r.status());
+        if (r.isActive() != null)
+            user.setActive(r.isActive());
         if (r.role() != null)
             user.setRole(r.role());
         return mapper.toResponse(user);
     }
 
+    public UserResponse disable(UUID id) {
+        var user = get(id);
+        user.setActive(false);
+        refreshTokens.revokeByUserId(id);
+        return mapper.toResponse(user);
+    }
+
     public void delete(UUID id) {
         var user = get(id);
-        requireNotAssignedToCourt(user, UserStatus.DISABLED, null);
-        user.setStatus(UserStatus.DISABLED);
+        bookings.deleteAll(bookings.findAllByCustomerId(id));
+        refreshTokens.deleteByUserId(id);
+        courts.findAllByManagersId(id).forEach(court -> court.getManagers().remove(user));
+        auditLogs.deleteByUsername(user.getUsername());
+        users.delete(user);
     }
 
     @Transactional(readOnly = true)
@@ -90,10 +106,9 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new NotFoundException("User not found"));
     }
 
-    private void requireNotAssignedToCourt(User user, UserStatus newStatus, RoleName newRole) {
-        boolean losesManagerAccess = newStatus != null && newStatus != UserStatus.ACTIVE
-                || newRole != null && newRole != RoleName.MANAGER;
+    private void requireNotAssignedToCourt(User user, RoleName newRole) {
+        boolean losesManagerAccess = newRole != null && newRole != RoleName.MANAGER;
         if (losesManagerAccess && courts.existsByManagersId(user.getId()))
-            throw new ConflictException("Remove this manager from all courts before changing role or status");
+            throw new ConflictException("Remove this manager from all courts before changing role");
     }
 }

@@ -29,6 +29,6 @@ public class CustomUserDetailsService implements UserDetailsService {
     private UserDetails toUserDetails(com.project.modules.user.entity.User user) {
         return User.withUsername(user.getUsername()).password(user.getPassword())
                 .authorities("ROLE_" + user.getRole().name())
-                .disabled(user.getStatus() != com.project.common.enums.UserStatus.ACTIVE).build();
+                .disabled(!user.isActive()).build();
     }
 }

@@ -1,6 +1,5 @@
 package com.project.modules.court.entity;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -28,8 +27,6 @@ public class Court {
     private String description;
     @Column(nullable = false)
     private String address;
-    @Column(nullable = false, precision = 12, scale = 2)
-    private BigDecimal pricePerHour;
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default

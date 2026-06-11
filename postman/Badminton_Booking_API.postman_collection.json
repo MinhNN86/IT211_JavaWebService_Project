@@ -388,7 +388,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Postman Court {{$timestamp}}\",\n  \"description\": \"Court created by Postman\",\n  \"address\": \"123 Test Street\",\n  \"pricePerHour\": 150000\n}"
+              "raw": "{\n  \"name\": \"Postman Court {{$timestamp}}\",\n  \"description\": \"Court created by Postman\",\n  \"address\": \"123 Test Street\"\n}"
             },
             "url": "{{baseUrl}}/api/v1/manager/courts"
           }
@@ -405,7 +405,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Postman Court Updated\",\n  \"description\": \"Updated by Postman\",\n  \"address\": \"456 Test Street\",\n  \"pricePerHour\": 180000,\n  \"status\": \"ACTIVE\"\n}"
+              "raw": "{\n  \"name\": \"Postman Court Updated\",\n  \"description\": \"Updated by Postman\",\n  \"address\": \"456 Test Street\",\n  \"status\": \"ACTIVE\"\n}"
             },
             "url": "{{baseUrl}}/api/v1/manager/courts/{{courtId}}"
           }
@@ -449,7 +449,7 @@
               "mode": "raw",
               "raw": "{\n  \"startTime\": \"{{slotStart}}\",\n  \"endTime\": \"{{slotEnd}}\",\n  \"price\": 50000\n}"
             },
-            "url": "{{baseUrl}}/api/v1/admin/time-slots"
+            "url": "{{baseUrl}}/api/v1/manager/courts/{{courtId}}/time-slots"
           }
         },
         {
@@ -466,7 +466,7 @@
               "mode": "raw",
               "raw": "{\n  \"startTime\": \"{{slotStart}}\",\n  \"endTime\": \"{{slotEnd}}\",\n  \"price\": 60000,\n  \"active\": true\n}"
             },
-            "url": "{{baseUrl}}/api/v1/admin/time-slots/{{timeSlotId}}"
+            "url": "{{baseUrl}}/api/v1/manager/courts/{{courtId}}/time-slots/{{timeSlotId}}"
           }
         }
       ]
@@ -483,7 +483,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/courts?name=&status=ACTIVE&minPrice=0&maxPrice=1000000&page=0&size=20&sort=id,asc",
+              "raw": "{{baseUrl}}/api/v1/courts?name=&status=ACTIVE&page=0&size=20&sort=id,asc",
               "host": ["{{baseUrl}}"],
               "path": ["api", "v1", "courts"],
               "query": [
@@ -495,14 +495,6 @@
                 {
                   "key": "status",
                   "value": "ACTIVE"
-                },
-                {
-                  "key": "minPrice",
-                  "value": "0"
-                },
-                {
-                  "key": "maxPrice",
-                  "value": "1000000"
                 },
                 {
                   "key": "page",
@@ -539,7 +531,7 @@
             },
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/api/v1/time-slots"
+            "url": "{{baseUrl}}/api/v1/courts/{{courtId}}/time-slots"
           }
         }
       ]
@@ -682,7 +674,7 @@
     },
     {
       "name": "06 - Admin Users and Court Managers",
-      "description": "Tạo một manager thứ hai, thêm vào sân đã tạo, kiểm tra danh sách quản lý, sau đó gỡ khỏi sân trước khi update/delete user.",
+      "description": "Tạo một manager thứ hai, thêm vào sân đã tạo, kiểm tra danh sách quản lý, sau đó update, disable và xóa user.",
       "auth": {
         "type": "bearer",
         "bearer": [
@@ -813,7 +805,7 @@
             "method": "DELETE",
             "header": [],
             "url": "{{baseUrl}}/api/v1/admin/courts/{{courtId}}/managers/{{managerId}}",
-            "description": "Gỡ manager thử nghiệm khỏi sân để có thể tiếp tục update hoặc soft-delete user đó."
+            "description": "Gỡ manager thử nghiệm khỏi sân trước khi tiếp tục cập nhật user."
           }
         },
         {
@@ -836,13 +828,21 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"fullName\": \"Postman Manager Updated\",\n  \"email\": \"updated_{{$timestamp}}@example.com\",\n  \"phone\": \"0908888888\",\n  \"status\": \"ACTIVE\",\n  \"role\": \"MANAGER\"\n}"
+              "raw": "{\n  \"fullName\": \"Postman Manager Updated\",\n  \"email\": \"updated_{{$timestamp}}@example.com\",\n  \"phone\": \"0908888888\",\n  \"isActive\": true,\n  \"role\": \"MANAGER\"\n}"
             },
             "url": "{{baseUrl}}/api/v1/admin/users/{{userId}}"
           }
         },
         {
-          "name": "Delete User (Soft Delete)",
+          "name": "Disable User",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/admin/users/{{userId}}/disable"
+          }
+        },
+        {
+          "name": "Delete User (Hard Delete)",
           "request": {
             "method": "DELETE",
             "header": [],
@@ -1017,7 +1017,7 @@
           "request": {
             "method": "DELETE",
             "header": [],
-            "url": "{{baseUrl}}/api/v1/admin/time-slots/{{timeSlotId}}"
+            "url": "{{baseUrl}}/api/v1/manager/courts/{{courtId}}/time-slots/{{timeSlotId}}"
           }
         }
       ]

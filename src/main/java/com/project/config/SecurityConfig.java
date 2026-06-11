@@ -2,6 +2,7 @@ package com.project.config;
 
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.*;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.*;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -45,8 +46,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/refresh",
                                 "/api/v1/auth/forgot-password", "/uploads/**")
                         .permitAll()
-                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/courts/**",
-                                "/api/v1/time-slots/**")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/courts/**")
                         .permitAll().requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/manager/**").hasAnyRole("MANAGER", "ADMIN")
                         .requestMatchers("/api/v1/customer/**").hasRole("CUSTOMER").anyRequest().authenticated())

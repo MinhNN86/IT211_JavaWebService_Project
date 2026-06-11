@@ -18,24 +18,27 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class TimeSlotController {
     private final TimeSlotService service;
-    @GetMapping("/api/v1/time-slots")
-    ApiResponse<List<TimeSlotResponse>> all() {
-        return ApiResponse.success("Time slots retrieved", service.findAll());
+
+    @GetMapping("/api/v1/courts/{courtId}/time-slots")
+    ApiResponse<List<TimeSlotResponse>> all(@PathVariable Long courtId) {
+        return ApiResponse.success("Time slots retrieved", service.findByCourt(courtId));
     }
 
-    @PostMapping("/api/v1/admin/time-slots")
-    ResponseEntity<ApiResponse<TimeSlotResponse>> create(@Valid @RequestBody CreateTimeSlotRequest r) {
-        return ResponseEntity.status(201).body(ApiResponse.success("Time slot created", service.create(r)));
+    @PostMapping("/api/v1/manager/courts/{courtId}/time-slots")
+    ResponseEntity<ApiResponse<TimeSlotResponse>> create(@PathVariable Long courtId,
+            @Valid @RequestBody CreateTimeSlotRequest r) {
+        return ResponseEntity.status(201).body(ApiResponse.success("Time slot created", service.create(courtId, r)));
     }
 
-    @PutMapping("/api/v1/admin/time-slots/{id}")
-    ApiResponse<TimeSlotResponse> update(@PathVariable Long id, @Valid @RequestBody UpdateTimeSlotRequest r) {
-        return ApiResponse.success("Time slot updated", service.update(id, r));
+    @PutMapping("/api/v1/manager/courts/{courtId}/time-slots/{id}")
+    ApiResponse<TimeSlotResponse> update(@PathVariable Long courtId, @PathVariable Long id,
+            @Valid @RequestBody UpdateTimeSlotRequest r) {
+        return ApiResponse.success("Time slot updated", service.update(courtId, id, r));
     }
 
-    @DeleteMapping("/api/v1/admin/time-slots/{id}")
+    @DeleteMapping("/api/v1/manager/courts/{courtId}/time-slots/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    void delete(@PathVariable Long id) {
-        service.delete(id);
+    void delete(@PathVariable Long courtId, @PathVariable Long id) {
+        service.delete(courtId, id);
     }
 }

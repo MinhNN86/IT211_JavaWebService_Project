@@ -1,6 +1,5 @@
 package com.project.modules.court.service.impl;
 
-import java.math.BigDecimal;
 import java.util.*;
 
 import org.springframework.data.domain.*;
@@ -32,9 +31,8 @@ public class CourtServiceImpl implements CourtService {
     private final UserRepository users;
     private final CourtAccessService access;
     @Transactional(readOnly = true)
-    public PageResponse<CourtResponse> findAll(String name, CourtStatus status, BigDecimal minPrice,
-            BigDecimal maxPrice, Pageable p) {
-        Page<Court> page = repository.search(name, status, minPrice, maxPrice, p);
+    public PageResponse<CourtResponse> findAll(String name, CourtStatus status, Pageable p) {
+        Page<Court> page = repository.search(name, status, p);
         return PageResponse.from(page, page.stream().map(mapper::toResponse).toList());
     }
 
@@ -46,7 +44,7 @@ public class CourtServiceImpl implements CourtService {
     public CourtResponse create(CreateCourtRequest r) {
         var managers = managersForNewCourt(r.managerIds());
         return mapper.toResponse(repository.save(Court.builder().name(r.name()).description(r.description())
-                .address(r.address()).pricePerHour(r.pricePerHour()).managers(managers).build()));
+                .address(r.address()).managers(managers).build()));
     }
 
     public CourtResponse update(Long id, UpdateCourtRequest r) {
@@ -55,7 +53,6 @@ public class CourtServiceImpl implements CourtService {
         c.setName(r.name());
         c.setDescription(r.description());
         c.setAddress(r.address());
-        c.setPricePerHour(r.pricePerHour());
         if (r.status() != null)
             c.setStatus(r.status());
         return mapper.toResponse(c);
@@ -108,14 +105,14 @@ public class CourtServiceImpl implements CourtService {
         if (managers.size() != requestedManagerIds.size())
             throw new NotFoundException("One or more managers not found");
         if (managers.stream()
-                .anyMatch(user -> user.getRole() != RoleName.MANAGER || user.getStatus() != UserStatus.ACTIVE))
+                .anyMatch(user -> user.getRole() != RoleName.MANAGER || !user.isActive()))
             throw new BadRequestException("All assigned users must be active managers");
         return new HashSet<>(managers);
     }
 
     private User getManager(UUID id) {
         var user = users.findById(id).orElseThrow(() -> new NotFoundException("User not found"));
-        if (user.getRole() != RoleName.MANAGER || user.getStatus() != UserStatus.ACTIVE)
+        if (user.getRole() != RoleName.MANAGER || !user.isActive())
             throw new BadRequestException("User must be an active manager");
         return user;
     }

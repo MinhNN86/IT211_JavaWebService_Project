@@ -2,6 +2,8 @@ package com.project.modules.booking.repository;
 
 import java.time.LocalDate;
 import java.util.Collection;
+import java.util.List;
+import java.util.UUID;
 
 import org.springframework.data.domain.*;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -24,6 +26,10 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             @Param("slotIds") Collection<Long> slotIds, @Param("statuses") Collection<BookingStatus> statuses);
 
     Page<Booking> findByCustomerUsername(String username, Pageable pageable);
+
+    List<Booking> findAllByCustomerId(UUID customerId);
+
+    boolean existsByCustomerId(UUID customerId);
 
     @Query("select b from Booking b join b.court.managers manager where manager.username = :username")
     Page<Booking> findManagedBookings(@Param("username") String username, Pageable pageable);

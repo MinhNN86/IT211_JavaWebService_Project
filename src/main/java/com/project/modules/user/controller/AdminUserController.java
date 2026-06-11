@@ -40,6 +40,11 @@ public class AdminUserController {
         return ApiResponse.success("User updated", service.update(id, r));
     }
 
+    @PatchMapping("/{id}/disable")
+    ApiResponse<UserResponse> disable(@PathVariable UUID id) {
+        return ApiResponse.success("User disabled", service.disable(id));
+    }
+
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void delete(@PathVariable UUID id) {

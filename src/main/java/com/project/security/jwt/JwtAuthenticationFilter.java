@@ -9,6 +9,7 @@ import jakarta.servlet.http.*;
 import org.springframework.http.*;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -40,6 +41,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             jwt.valid(token);
             var details = users.loadUserById(jwt.userId(token));
+            if (!details.isEnabled())
+                throw new UsernameNotFoundException("User is disabled");
             var auth = new UsernamePasswordAuthenticationToken(details, null, details.getAuthorities());
             auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(req));
             SecurityContextHolder.getContext().setAuthentication(auth);

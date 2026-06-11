@@ -5,4 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import com.project.modules.audit.entity.AuditLog;
 
 public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
+    boolean existsByUsername(String username);
+
+    void deleteByUsername(String username);
 }

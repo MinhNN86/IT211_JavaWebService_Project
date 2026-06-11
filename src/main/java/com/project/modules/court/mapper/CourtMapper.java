@@ -9,7 +9,7 @@ import com.project.modules.court.entity.Court;
 @Component
 public class CourtMapper {
     public CourtResponse toResponse(Court c) {
-        return new CourtResponse(c.getId(), c.getName(), c.getDescription(), c.getAddress(), c.getPricePerHour(),
-                c.getStatus(), c.getImages().stream().map(i -> new CourtImageResponse(i.getId(), i.getUrl())).toList());
+        return new CourtResponse(c.getId(), c.getName(), c.getDescription(), c.getAddress(), c.getStatus(),
+                c.getImages().stream().map(i -> new CourtImageResponse(i.getId(), i.getUrl())).toList());
     }
 }

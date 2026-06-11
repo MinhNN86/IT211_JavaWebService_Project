@@ -7,6 +7,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.project.common.exception.*;
+import com.project.modules.court.entity.Court;
+import com.project.modules.court.repository.CourtRepository;
+import com.project.modules.court.service.CourtAccessService;
 import com.project.modules.timeslot.dto.request.*;
 import com.project.modules.timeslot.dto.response.TimeSlotResponse;
 import com.project.modules.timeslot.entity.TimeSlot;
@@ -20,22 +23,31 @@ import lombok.RequiredArgsConstructor;
 @Transactional
 public class TimeSlotServiceImpl implements TimeSlotService {
     private final TimeSlotRepository repository;
+    private final CourtRepository courts;
+    private final CourtAccessService courtAccess;
+
     @Transactional(readOnly = true)
-    public List<TimeSlotResponse> findAll() {
-        return repository.findAll().stream().map(this::map).toList();
+    public List<TimeSlotResponse> findByCourt(Long courtId) {
+        requireCourt(courtId);
+        return repository.findByCourtIdOrderByStartTime(courtId).stream().map(this::map).toList();
     }
 
-    public TimeSlotResponse create(CreateTimeSlotRequest r) {
+    public TimeSlotResponse create(Long courtId, CreateTimeSlotRequest r) {
+        courtAccess.requireCanManage(courtId);
+        var court = requireCourt(courtId);
         validate(r.startTime(), r.endTime());
-        if (repository.existsByStartTimeAndEndTime(r.startTime(), r.endTime()))
-            throw new ConflictException("Time slot already exists");
-        return map(repository
-                .save(TimeSlot.builder().startTime(r.startTime()).endTime(r.endTime()).price(r.price()).build()));
+        if (repository.existsByCourtIdAndStartTimeAndEndTime(courtId, r.startTime(), r.endTime()))
+            throw new ConflictException("Time slot already exists for this court");
+        return map(repository.save(TimeSlot.builder().court(court).startTime(r.startTime()).endTime(r.endTime())
+                .price(r.price()).build()));
     }
 
-    public TimeSlotResponse update(Long id, UpdateTimeSlotRequest r) {
+    public TimeSlotResponse update(Long courtId, Long id, UpdateTimeSlotRequest r) {
+        courtAccess.requireCanManage(courtId);
         validate(r.startTime(), r.endTime());
-        var s = get(id);
+        var s = get(courtId, id);
+        if (repository.existsByCourtIdAndStartTimeAndEndTimeAndIdNot(courtId, r.startTime(), r.endTime(), id))
+            throw new ConflictException("Time slot already exists for this court");
         s.setStartTime(r.startTime());
         s.setEndTime(r.endTime());
         s.setPrice(r.price());
@@ -44,8 +56,9 @@ public class TimeSlotServiceImpl implements TimeSlotService {
         return map(s);
     }
 
-    public void delete(Long id) {
-        get(id).setActive(false);
+    public void delete(Long courtId, Long id) {
+        courtAccess.requireCanManage(courtId);
+        get(courtId, id).setActive(false);
     }
 
     private void validate(LocalTime start, LocalTime end) {
@@ -53,11 +66,17 @@ public class TimeSlotServiceImpl implements TimeSlotService {
             throw new BadRequestException("Start time must be before end time");
     }
 
-    private TimeSlot get(Long id) {
-        return repository.findById(id).orElseThrow(() -> new NotFoundException("Time slot not found"));
+    private Court requireCourt(Long courtId) {
+        return courts.findById(courtId).orElseThrow(() -> new NotFoundException("Court not found"));
+    }
+
+    private TimeSlot get(Long courtId, Long id) {
+        return repository.findByIdAndCourtId(id, courtId)
+                .orElseThrow(() -> new NotFoundException("Time slot not found"));
     }
 
     private TimeSlotResponse map(TimeSlot s) {
-        return new TimeSlotResponse(s.getId(), s.getStartTime(), s.getEndTime(), s.getPrice(), s.isActive());
+        return new TimeSlotResponse(s.getId(), s.getCourt().getId(), s.getStartTime(), s.getEndTime(), s.getPrice(),
+                s.isActive());
     }
 }

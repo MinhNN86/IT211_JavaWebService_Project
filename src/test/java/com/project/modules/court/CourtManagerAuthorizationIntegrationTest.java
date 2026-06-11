@@ -3,7 +3,6 @@ package com.project.modules.court;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -124,20 +123,25 @@ class CourtManagerAuthorizationIntegrationTest {
     }
 
     @Test
-    void assignedManagerCannotBeDemotedOrDisabled() {
+    void assignedManagerCannotBeDemotedButCanBeDisabledAndDeleted() {
         createCourtFor(firstManager, "Managed court");
         authenticate(admin);
 
         assertThatThrownBy(() -> userService.update(firstManager.getId(),
-                new UpdateUserRequest(firstManager.getFullName(), firstManager.getEmail(), null, UserStatus.DISABLED,
+                new UpdateUserRequest(firstManager.getFullName(), firstManager.getEmail(), null, false,
                         RoleName.CUSTOMER)))
                 .isInstanceOf(ConflictException.class);
-        assertThatThrownBy(() -> userService.delete(firstManager.getId())).isInstanceOf(ConflictException.class);
+        assertThat(userService.disable(firstManager.getId()).isActive()).isFalse();
+
+        userService.delete(firstManager.getId());
+
+        assertThat(users.existsById(firstManager.getId())).isFalse();
+        assertThat(courts.existsByManagersId(firstManager.getId())).isFalse();
     }
 
     private com.project.modules.court.dto.response.CourtResponse createCourtFor(User manager, String name) {
         authenticate(manager);
-        return courtService.create(new CreateCourtRequest(name, null, "Address", BigDecimal.valueOf(100_000), null));
+        return courtService.create(new CreateCourtRequest(name, null, "Address", null));
     }
 
     private Booking booking(Long courtId) {
@@ -146,11 +150,11 @@ class CourtManagerAuthorizationIntegrationTest {
     }
 
     private CreateCourtRequest createRequest(java.util.Set<UUID> managerIds) {
-        return new CreateCourtRequest("Court", null, "Address", BigDecimal.valueOf(100_000), managerIds);
+        return new CreateCourtRequest("Court", null, "Address", managerIds);
     }
 
     private UpdateCourtRequest updateRequest(String name) {
-        return new UpdateCourtRequest(name, null, "Address", BigDecimal.valueOf(100_000), CourtStatus.ACTIVE);
+        return new UpdateCourtRequest(name, null, "Address", CourtStatus.ACTIVE);
     }
 
     private User createUser(String prefix, RoleName role) {

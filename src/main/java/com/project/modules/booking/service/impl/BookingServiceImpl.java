@@ -47,6 +47,8 @@ public class BookingServiceImpl implements BookingService {
         var selectedSlots = slots.findAllById(slotIds);
         if (selectedSlots.size() != slotIds.size())
             throw new NotFoundException("One or more time slots not found");
+        if (selectedSlots.stream().anyMatch(slot -> !slot.getCourt().getId().equals(r.courtId())))
+            throw new BadRequestException("All time slots must belong to the selected court");
         if (court.getStatus() != CourtStatus.ACTIVE || selectedSlots.stream().anyMatch(slot -> !slot.isActive()))
             throw new BadRequestException("Court or time slot is not available");
         if (bookings.existsBlockingBooking(r.courtId(), r.bookingDate(), slotIds, BLOCKING))

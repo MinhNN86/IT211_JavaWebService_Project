@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
-import java.math.BigDecimal;
 import java.nio.file.*;
 import java.util.Comparator;
 import java.util.List;
@@ -103,8 +102,7 @@ class LocalFileStorageServiceIntegrationTest {
         var manager = users.findByUsername("manager").orElseThrow();
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
                 manager.getUsername(), null, List.of(new SimpleGrantedAuthority("ROLE_MANAGER"))));
-        return courts.save(Court.builder().name("Court 1").address("Address")
-                .pricePerHour(BigDecimal.valueOf(100_000)).managers(Set.of(manager)).build());
+        return courts.save(Court.builder().name("Court 1").address("Address").managers(Set.of(manager)).build());
     }
 
     private MockMultipartFile image(String name) {

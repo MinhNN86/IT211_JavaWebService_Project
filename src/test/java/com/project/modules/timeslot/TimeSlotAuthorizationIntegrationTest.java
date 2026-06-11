@@ -1,9 +1,11 @@
 package com.project.modules.timeslot;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-import org.junit.jupiter.api.Test;
+import java.util.HashSet;
+
+import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -11,6 +13,10 @@ import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.project.modules.court.entity.Court;
+import com.project.modules.court.repository.CourtRepository;
+import com.project.modules.user.repository.UserRepository;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -26,39 +32,69 @@ class TimeSlotAuthorizationIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
+    @Autowired
+    private CourtRepository courts;
+    @Autowired
+    private UserRepository users;
 
-    @Test
-    void anonymousUserCanViewTimeSlots() throws Exception {
-        mockMvc.perform(get("/api/v1/time-slots")).andExpect(status().isOk());
+    private Court managedCourt;
+    private Court otherCourt;
+
+    @BeforeEach
+    void setUp() {
+        var manager = users.findByUsername("manager").orElseThrow();
+        managedCourt = courts.save(Court.builder().name("Managed court").address("Address")
+                .managers(new HashSet<>(java.util.Set.of(manager))).build());
+        otherCourt = courts.save(Court.builder().name("Other court").address("Address").build());
     }
 
     @Test
-    @WithMockUser(roles = "MANAGER")
-    void managerCannotManageTimeSlots() throws Exception {
-        mockMvc.perform(post("/api/v1/admin/time-slots").contentType(MediaType.APPLICATION_JSON)
-                .content(CREATE_REQUEST)).andExpect(status().isForbidden());
-        mockMvc.perform(put("/api/v1/admin/time-slots/1").contentType(MediaType.APPLICATION_JSON)
-                .content(CREATE_REQUEST)).andExpect(status().isForbidden());
-        mockMvc.perform(delete("/api/v1/admin/time-slots/1")).andExpect(status().isForbidden());
+    void anonymousUserCanViewTimeSlotsForCourt() throws Exception {
+        mockMvc.perform(get("/api/v1/courts/{courtId}/time-slots", managedCourt.getId())).andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(username = "manager", roles = "MANAGER")
+    void managerCanOnlyManageAssignedCourtTimeSlots() throws Exception {
+        var response = mockMvc
+                .perform(post("/api/v1/manager/courts/{courtId}/time-slots", managedCourt.getId())
+                        .contentType(MediaType.APPLICATION_JSON).content(CREATE_REQUEST))
+                .andExpect(status().isCreated()).andReturn();
+        var slotId = com.jayway.jsonpath.JsonPath.read(response.getResponse().getContentAsString(), "$.data.id")
+                .toString();
+
+        mockMvc.perform(post("/api/v1/manager/courts/{courtId}/time-slots", otherCourt.getId())
+                .contentType(MediaType.APPLICATION_JSON).content(CREATE_REQUEST)).andExpect(status().isForbidden());
+        mockMvc.perform(put("/api/v1/manager/courts/{courtId}/time-slots/{id}", managedCourt.getId(), slotId)
+                .contentType(MediaType.APPLICATION_JSON).content(updateRequest())).andExpect(status().isOk());
+        mockMvc.perform(delete("/api/v1/manager/courts/{courtId}/time-slots/{id}", managedCourt.getId(), slotId))
+                .andExpect(status().isNoContent());
     }
 
     @Test
     @WithMockUser(roles = "ADMIN")
-    void adminCanManageTimeSlots() throws Exception {
-        var response = mockMvc.perform(post("/api/v1/admin/time-slots").contentType(MediaType.APPLICATION_JSON)
-                .content(CREATE_REQUEST)).andExpect(status().isCreated()).andReturn();
-        var location = com.jayway.jsonpath.JsonPath.read(response.getResponse().getContentAsString(), "$.data.id")
-                .toString();
+    void adminCanManageAnyCourtAndSameTimesCanExistForDifferentCourts() throws Exception {
+        mockMvc.perform(post("/api/v1/manager/courts/{courtId}/time-slots", managedCourt.getId())
+                .contentType(MediaType.APPLICATION_JSON).content(CREATE_REQUEST)).andExpect(status().isCreated());
+        mockMvc.perform(post("/api/v1/manager/courts/{courtId}/time-slots", otherCourt.getId())
+                .contentType(MediaType.APPLICATION_JSON).content(CREATE_REQUEST)).andExpect(status().isCreated());
+    }
 
-        mockMvc.perform(put("/api/v1/admin/time-slots/{id}", location).contentType(MediaType.APPLICATION_JSON)
-                .content("""
-                        {
-                          "startTime": "06:30:00",
-                          "endTime": "07:30:00",
-                          "price": 60000,
-                          "active": true
-                        }
-                        """)).andExpect(status().isOk());
-        mockMvc.perform(delete("/api/v1/admin/time-slots/{id}", location)).andExpect(status().isNoContent());
+    @Test
+    @WithMockUser(roles = "CUSTOMER")
+    void customerCannotManageTimeSlots() throws Exception {
+        mockMvc.perform(post("/api/v1/manager/courts/{courtId}/time-slots", managedCourt.getId())
+                .contentType(MediaType.APPLICATION_JSON).content(CREATE_REQUEST)).andExpect(status().isForbidden());
+    }
+
+    private String updateRequest() {
+        return """
+                {
+                  "startTime": "06:30:00",
+                  "endTime": "07:30:00",
+                  "price": 60000,
+                  "active": true
+                }
+                """;
     }
 }

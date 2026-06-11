@@ -1,6 +1,5 @@
 package com.project.modules.court.service;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -13,8 +12,7 @@ import com.project.modules.court.dto.response.CourtManagerResponse;
 import com.project.modules.court.dto.response.CourtResponse;
 
 public interface CourtService {
-    PageResponse<CourtResponse> findAll(String name, CourtStatus status, BigDecimal minPrice, BigDecimal maxPrice,
-            Pageable pageable);
+    PageResponse<CourtResponse> findAll(String name, CourtStatus status, Pageable pageable);
 
     CourtResponse findById(Long id);
 
