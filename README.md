@@ -370,7 +370,7 @@ Endpoint trả danh sách phân trang sử dụng cấu trúc:
   "status": 400,
   "error": "Bad Request",
   "message": "startTime: must not be null",
-  "path": "/api/v1/manager/time-slots"
+  "path": "/api/v1/admin/time-slots"
 }
 ```
 
@@ -453,9 +453,9 @@ Manager chỉ được cập nhật/xóa sân, quản lý ảnh và xử lý boo
 | Method   | Endpoint                          | Quyền         | Request                                    | Mô tả                                  |
 | -------- | --------------------------------- | ------------- | ------------------------------------------ | -------------------------------------- |
 | `GET`    | `/api/v1/time-slots`              | Public        | -                                          | Lấy toàn bộ time slot, gồm cả inactive |
-| `POST`   | `/api/v1/manager/time-slots`      | Manager/Admin | `startTime`, `endTime`, `price`            | Tạo time slot                          |
-| `PUT`    | `/api/v1/manager/time-slots/{id}` | Manager/Admin | `startTime`, `endTime`, `price`, `active?` | Cập nhật time slot                     |
-| `DELETE` | `/api/v1/manager/time-slots/{id}` | Manager/Admin | Path `id`                                  | Soft delete time slot                  |
+| `POST`   | `/api/v1/admin/time-slots`        | Admin         | `startTime`, `endTime`, `price`            | Tạo time slot                          |
+| `PUT`    | `/api/v1/admin/time-slots/{id}`   | Admin         | `startTime`, `endTime`, `price`, `active?` | Cập nhật time slot                     |
+| `DELETE` | `/api/v1/admin/time-slots/{id}`   | Admin         | Path `id`                                  | Soft delete time slot                  |
 
 `startTime` phải nhỏ hơn `endTime`. Định dạng thời gian JSON: `"18:00:00"`.
 

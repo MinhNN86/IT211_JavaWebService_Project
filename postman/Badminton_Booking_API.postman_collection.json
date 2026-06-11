@@ -449,7 +449,7 @@
               "mode": "raw",
               "raw": "{\n  \"startTime\": \"{{slotStart}}\",\n  \"endTime\": \"{{slotEnd}}\",\n  \"price\": 50000\n}"
             },
-            "url": "{{baseUrl}}/api/v1/manager/time-slots"
+            "url": "{{baseUrl}}/api/v1/admin/time-slots"
           }
         },
         {
@@ -466,7 +466,7 @@
               "mode": "raw",
               "raw": "{\n  \"startTime\": \"{{slotStart}}\",\n  \"endTime\": \"{{slotEnd}}\",\n  \"price\": 60000,\n  \"active\": true\n}"
             },
-            "url": "{{baseUrl}}/api/v1/manager/time-slots/{{timeSlotId}}"
+            "url": "{{baseUrl}}/api/v1/admin/time-slots/{{timeSlotId}}"
           }
         }
       ]
@@ -1017,7 +1017,7 @@
           "request": {
             "method": "DELETE",
             "header": [],
-            "url": "{{baseUrl}}/api/v1/manager/time-slots/{{timeSlotId}}"
+            "url": "{{baseUrl}}/api/v1/admin/time-slots/{{timeSlotId}}"
           }
         }
       ]

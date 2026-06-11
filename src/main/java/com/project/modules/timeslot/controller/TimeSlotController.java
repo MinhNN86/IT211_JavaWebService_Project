@@ -23,17 +23,17 @@ public class TimeSlotController {
         return ApiResponse.success("Time slots retrieved", service.findAll());
     }
 
-    @PostMapping("/api/v1/manager/time-slots")
+    @PostMapping("/api/v1/admin/time-slots")
     ResponseEntity<ApiResponse<TimeSlotResponse>> create(@Valid @RequestBody CreateTimeSlotRequest r) {
         return ResponseEntity.status(201).body(ApiResponse.success("Time slot created", service.create(r)));
     }
 
-    @PutMapping("/api/v1/manager/time-slots/{id}")
+    @PutMapping("/api/v1/admin/time-slots/{id}")
     ApiResponse<TimeSlotResponse> update(@PathVariable Long id, @Valid @RequestBody UpdateTimeSlotRequest r) {
         return ApiResponse.success("Time slot updated", service.update(id, r));
     }
 
-    @DeleteMapping("/api/v1/manager/time-slots/{id}")
+    @DeleteMapping("/api/v1/admin/time-slots/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void delete(@PathVariable Long id) {
         service.delete(id);
