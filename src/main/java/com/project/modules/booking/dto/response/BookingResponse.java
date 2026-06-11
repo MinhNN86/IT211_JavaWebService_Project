@@ -7,7 +7,15 @@ import java.util.UUID;
 import com.project.common.enums.BookingStatus;
 import com.project.modules.timeslot.dto.response.TimeSlotResponse;
 
-public record BookingResponse(Long id, UUID customerId, String customerUsername, Long courtId, String courtName,
-        List<TimeSlotResponse> timeSlots, LocalDate bookingDate, BookingStatus status, String note,
-        LocalDateTime createdAt) {
+public record BookingResponse(
+                Long id,
+                UUID customerId,
+                String customerUsername,
+                Long courtId,
+                String courtName,
+                List<TimeSlotResponse> timeSlots,
+                LocalDate bookingDate,
+                BookingStatus status,
+                String note,
+                LocalDateTime createdAt) {
 }

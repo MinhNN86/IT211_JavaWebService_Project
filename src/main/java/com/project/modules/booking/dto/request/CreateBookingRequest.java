@@ -5,6 +5,9 @@ import java.util.List;
 
 import jakarta.validation.constraints.*;
 
-public record CreateBookingRequest(@NotNull Long courtId, @NotEmpty List<@NotNull Long> timeSlotIds,
-        @NotNull @FutureOrPresent LocalDate bookingDate, String note) {
+public record CreateBookingRequest(
+                @NotNull Long courtId,
+                @NotEmpty List<@NotNull Long> timeSlotIds,
+                @NotNull @FutureOrPresent LocalDate bookingDate,
+                String note) {
 }

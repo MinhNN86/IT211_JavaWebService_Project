@@ -5,6 +5,8 @@ import java.time.LocalTime;
 
 import jakarta.validation.constraints.*;
 
-public record CreateTimeSlotRequest(@NotNull LocalTime startTime, @NotNull LocalTime endTime,
-        @NotNull @Positive BigDecimal price) {
+public record CreateTimeSlotRequest(
+                @NotNull LocalTime startTime,
+                @NotNull LocalTime endTime,
+                @NotNull @Positive BigDecimal price) {
 }
