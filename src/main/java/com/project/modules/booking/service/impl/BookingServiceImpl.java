@@ -1,24 +1,35 @@
 package com.project.modules.booking.service.impl;
 
-import java.util.*;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.project.common.enums.*;
-import com.project.common.exception.*;
+import com.project.common.enums.BookingStatus;
+import com.project.common.enums.CourtStatus;
+import com.project.common.exception.BadRequestException;
+import com.project.common.exception.ConflictException;
+import com.project.common.exception.NotFoundException;
 import com.project.common.response.PageResponse;
 import com.project.common.util.SecurityUtils;
-import com.project.modules.booking.dto.request.*;
+import com.project.modules.booking.dto.request.CreateBookingRequest;
+import com.project.modules.booking.dto.request.UpdateBookingStatusRequest;
 import com.project.modules.booking.dto.response.BookingResponse;
 import com.project.modules.booking.entity.Booking;
 import com.project.modules.booking.mapper.BookingMapper;
 import com.project.modules.booking.repository.BookingRepository;
 import com.project.modules.booking.service.BookingService;
+import com.project.modules.court.entity.Court;
 import com.project.modules.court.repository.CourtRepository;
 import com.project.modules.court.service.CourtAccessService;
+import com.project.modules.timeslot.entity.TimeSlot;
 import com.project.modules.timeslot.repository.TimeSlotRepository;
+import com.project.modules.user.entity.User;
 import com.project.modules.user.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -27,70 +38,103 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 @Transactional
 public class BookingServiceImpl implements BookingService {
-    private static final List<BookingStatus> BLOCKING = List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED);
-    private static final Map<BookingStatus, Set<BookingStatus>> TRANSITIONS = Map.of(BookingStatus.PENDING,
-            Set.of(BookingStatus.CONFIRMED, BookingStatus.REJECTED), BookingStatus.CONFIRMED,
+    private static final List<BookingStatus> BLOCKING_STATUSES = List.of(BookingStatus.PENDING,
+            BookingStatus.CONFIRMED);
+    private static final Map<BookingStatus, Set<BookingStatus>> ALLOWED_STATUS_TRANSITIONS = Map.of(
+            BookingStatus.PENDING, Set.of(BookingStatus.CONFIRMED, BookingStatus.REJECTED), BookingStatus.CONFIRMED,
             Set.of(BookingStatus.COMPLETED, BookingStatus.CANCELLED));
-    private final BookingRepository bookings;
-    private final UserRepository users;
-    private final CourtRepository courts;
-    private final CourtAccessService courtAccess;
-    private final TimeSlotRepository slots;
-    private final BookingMapper mapper;
 
-    public BookingResponse create(CreateBookingRequest r) {
-        var court = courts.findByIdForUpdate(r.courtId()).orElseThrow(() -> new NotFoundException("Court not found"));
-        if (r.timeSlotIds() == null || r.timeSlotIds().isEmpty())
+    private final BookingRepository bookingRepository;
+    private final UserRepository userRepository;
+    private final CourtRepository courtRepository;
+    private final CourtAccessService courtAccessService;
+    private final TimeSlotRepository timeSlotRepository;
+    private final BookingMapper bookingMapper;
+
+    public BookingResponse create(CreateBookingRequest request) {
+        Court court = courtRepository.findByIdForUpdate(request.courtId())
+                .orElseThrow(() -> new NotFoundException("Court not found"));
+
+        if (request.timeSlotIds() == null || request.timeSlotIds().isEmpty()) {
             throw new BadRequestException("At least one time slot is required");
-        var slotIds = new LinkedHashSet<>(r.timeSlotIds());
-        if (slotIds.size() != r.timeSlotIds().size())
+        }
+
+        Set<Long> timeSlotIds = new LinkedHashSet<>(request.timeSlotIds());
+        if (timeSlotIds.size() != request.timeSlotIds().size()) {
             throw new BadRequestException("Time slot IDs must be unique");
-        var selectedSlots = slots.findAllById(slotIds);
-        if (selectedSlots.size() != slotIds.size())
+        }
+
+        List<TimeSlot> selectedTimeSlots = timeSlotRepository.findAllById(timeSlotIds);
+        if (selectedTimeSlots.size() != timeSlotIds.size()) {
             throw new NotFoundException("One or more time slots not found");
-        if (selectedSlots.stream().anyMatch(slot -> !slot.getCourt().getId().equals(r.courtId())))
+        }
+        if (selectedTimeSlots.stream().anyMatch(timeSlot -> !timeSlot.getCourt().getId().equals(request.courtId()))) {
             throw new BadRequestException("All time slots must belong to the selected court");
-        if (court.getStatus() != CourtStatus.ACTIVE || selectedSlots.stream().anyMatch(slot -> !slot.isActive()))
+        }
+        if (court.getStatus() != CourtStatus.ACTIVE
+                || selectedTimeSlots.stream().anyMatch(timeSlot -> !timeSlot.isActive())) {
             throw new BadRequestException("Court or time slot is not available");
-        if (bookings.existsBlockingBooking(r.courtId(), r.bookingDate(), slotIds, BLOCKING))
+        }
+        if (bookingRepository.existsBlockingBooking(request.courtId(), request.bookingDate(), timeSlotIds,
+                BLOCKING_STATUSES)) {
             throw new ConflictException("Court is already booked for one or more selected time slots");
-        var user = users.findByUsername(SecurityUtils.currentUsername())
+        }
+
+        String currentUsername = SecurityUtils.currentUsername();
+        User customer = userRepository.findByUsername(currentUsername)
                 .orElseThrow(() -> new NotFoundException("User not found"));
-        return mapper.toResponse(bookings.save(Booking.builder().customer(user).court(court)
-                .timeSlots(new LinkedHashSet<>(selectedSlots)).bookingDate(r.bookingDate()).note(r.note()).build()));
+
+        Booking booking = Booking.builder().customer(customer).court(court)
+                .timeSlots(new LinkedHashSet<>(selectedTimeSlots)).bookingDate(request.bookingDate())
+                .note(request.note())
+                .build();
+        Booking savedBooking = bookingRepository.save(booking);
+        return bookingMapper.toResponse(savedBooking);
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<BookingResponse> myBookings(Pageable p) {
-        var page = bookings.findByCustomerUsername(SecurityUtils.currentUsername(), p);
-        return PageResponse.from(page, page.stream().map(mapper::toResponse).toList());
+    public PageResponse<BookingResponse> myBookings(Pageable pageable) {
+        String currentUsername = SecurityUtils.currentUsername();
+        Page<Booking> bookingPage = bookingRepository.findByCustomerUsername(currentUsername, pageable);
+        List<BookingResponse> bookingResponses = bookingPage.stream().map(bookingMapper::toResponse).toList();
+        return PageResponse.from(bookingPage, bookingResponses);
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<BookingResponse> all(Pageable p) {
-        var page = SecurityUtils.hasRole("ADMIN")
-                ? bookings.findAll(p)
-                : bookings.findManagedBookings(SecurityUtils.currentUsername(), p);
-        return PageResponse.from(page, page.stream().map(mapper::toResponse).toList());
+    public PageResponse<BookingResponse> all(Pageable pageable) {
+        Page<Booking> bookingPage;
+        if (SecurityUtils.hasRole("ADMIN")) {
+            bookingPage = bookingRepository.findAll(pageable);
+        } else {
+            String currentUsername = SecurityUtils.currentUsername();
+            bookingPage = bookingRepository.findManagedBookings(currentUsername, pageable);
+        }
+
+        List<BookingResponse> bookingResponses = bookingPage.stream().map(bookingMapper::toResponse).toList();
+        return PageResponse.from(bookingPage, bookingResponses);
     }
 
     @Transactional(readOnly = true)
     public BookingResponse findById(Long id) {
-        var booking = get(id);
-        courtAccess.requireCanManage(booking.getCourt().getId());
-        return mapper.toResponse(booking);
+        Booking booking = getBooking(id);
+        courtAccessService.requireCanManage(booking.getCourt().getId());
+        return bookingMapper.toResponse(booking);
     }
 
-    public BookingResponse updateStatus(Long id, UpdateBookingStatusRequest r) {
-        var b = get(id);
-        courtAccess.requireCanManage(b.getCourt().getId());
-        if (!TRANSITIONS.getOrDefault(b.getStatus(), Set.of()).contains(r.status()))
+    public BookingResponse updateStatus(Long id, UpdateBookingStatusRequest request) {
+        Booking booking = getBooking(id);
+        courtAccessService.requireCanManage(booking.getCourt().getId());
+
+        Set<BookingStatus> allowedStatuses = ALLOWED_STATUS_TRANSITIONS.getOrDefault(booking.getStatus(), Set.of());
+        if (!allowedStatuses.contains(request.status())) {
             throw new BadRequestException("Invalid booking status transition");
-        b.setStatus(r.status());
-        return mapper.toResponse(b);
+        }
+
+        booking.setStatus(request.status());
+        return bookingMapper.toResponse(booking);
     }
 
-    private Booking get(Long id) {
-        return bookings.findById(id).orElseThrow(() -> new NotFoundException("Booking not found"));
+    private Booking getBooking(Long id) {
+        return bookingRepository.findById(id).orElseThrow(() -> new NotFoundException("Booking not found"));
     }
 }

@@ -3,9 +3,11 @@ package com.project.security.handler;
 import java.io.IOException;
 import java.time.LocalDateTime;
 
-import jakarta.servlet.http.*;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
-import org.springframework.http.*;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.stereotype.Component;
@@ -20,10 +22,15 @@ import lombok.RequiredArgsConstructor;
 public class CustomAccessDeniedHandler implements AccessDeniedHandler {
     private final ObjectMapper objectMapper;
 
-    public void handle(HttpServletRequest req, HttpServletResponse res, AccessDeniedException ex) throws IOException {
-        res.setStatus(403);
-        res.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        objectMapper.writeValue(res.getWriter(),
-                new ErrorResponse(LocalDateTime.now(), 403, "Forbidden", "Access denied", req.getRequestURI()));
+    @Override
+    public void handle(HttpServletRequest request, HttpServletResponse response, AccessDeniedException exception)
+            throws IOException {
+        HttpStatus status = HttpStatus.FORBIDDEN;
+        ErrorResponse errorResponse = new ErrorResponse(LocalDateTime.now(), status.value(), status.getReasonPhrase(),
+                "Access denied", request.getRequestURI());
+
+        response.setStatus(status.value());
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        objectMapper.writeValue(response.getWriter(), errorResponse);
     }
 }

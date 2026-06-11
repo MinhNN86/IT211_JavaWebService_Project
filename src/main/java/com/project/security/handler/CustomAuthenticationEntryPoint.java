@@ -3,9 +3,11 @@ package com.project.security.handler;
 import java.io.IOException;
 import java.time.LocalDateTime;
 
-import jakarta.servlet.http.*;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
-import org.springframework.http.*;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.stereotype.Component;
@@ -20,11 +22,15 @@ import lombok.RequiredArgsConstructor;
 public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint {
     private final ObjectMapper objectMapper;
 
-    public void commence(HttpServletRequest req, HttpServletResponse res, AuthenticationException ex)
+    @Override
+    public void commence(HttpServletRequest request, HttpServletResponse response, AuthenticationException exception)
             throws IOException {
-        res.setStatus(401);
-        res.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        objectMapper.writeValue(res.getWriter(), new ErrorResponse(LocalDateTime.now(), 401, "Unauthorized",
-                "Authentication required", req.getRequestURI()));
+        HttpStatus status = HttpStatus.UNAUTHORIZED;
+        ErrorResponse errorResponse = new ErrorResponse(LocalDateTime.now(), status.value(), status.getReasonPhrase(),
+                "Authentication required", request.getRequestURI());
+
+        response.setStatus(status.value());
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        objectMapper.writeValue(response.getWriter(), errorResponse);
     }
 }

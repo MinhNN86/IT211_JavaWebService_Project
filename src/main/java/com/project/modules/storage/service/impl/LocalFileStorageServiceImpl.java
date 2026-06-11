@@ -1,15 +1,24 @@
 package com.project.modules.storage.service.impl;
 
 import java.io.IOException;
-import java.nio.file.*;
-import java.util.*;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.project.common.exception.*;
+import com.project.common.exception.BadRequestException;
+import com.project.common.exception.NotFoundException;
+import com.project.modules.court.entity.Court;
 import com.project.modules.court.entity.CourtImage;
 import com.project.modules.court.repository.CourtImageRepository;
 import com.project.modules.court.repository.CourtRepository;
@@ -22,81 +31,113 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class LocalFileStorageServiceImpl implements FileStorageService {
-    private static final Map<String, String> TYPES = Map.of("image/png", ".png", "image/jpeg", ".jpg", "image/jpg",
-            ".jpg", "image/webp", ".webp");
-    private final CourtRepository courts;
-    private final CourtImageRepository images;
-    private final CourtAccessService courtAccess;
+    private static final long MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
+    private static final String COURT_IMAGE_DIRECTORY = "courts";
+    private static final Map<String, String> ALLOWED_IMAGE_TYPES = Map.of("image/png", ".png", "image/jpeg", ".jpg",
+            "image/jpg", ".jpg", "image/webp", ".webp");
+
+    private final CourtRepository courtRepository;
+    private final CourtImageRepository courtImageRepository;
+    private final CourtAccessService courtAccessService;
+
     @Value("${app.file.upload-dir}")
     private String uploadDir;
+
     @Value("${app.file.public-path}")
     private String publicPath;
+
+    @Override
     public FileUploadResponse storeCourtImage(MultipartFile file) {
         validateImage(file);
-        UUID id = UUID.randomUUID();
-        String name = id + TYPES.get(file.getContentType());
-        Path directory = Paths.get(uploadDir, "courts").toAbsolutePath().normalize();
-        try {
-            Files.createDirectories(directory);
-            Files.copy(file.getInputStream(), directory.resolve(name), StandardCopyOption.REPLACE_EXISTING);
-        } catch (IOException ex) {
+
+        UUID imageId = UUID.randomUUID();
+        String fileName = imageId + ALLOWED_IMAGE_TYPES.get(file.getContentType());
+        Path imageDirectory = getCourtImageDirectory();
+
+        try (InputStream inputStream = file.getInputStream()) {
+            Files.createDirectories(imageDirectory);
+            Files.copy(inputStream, imageDirectory.resolve(fileName), StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException exception) {
             throw new BadRequestException("Could not store image");
         }
-        return new FileUploadResponse(id, name, publicPath + "/courts/" + name);
+
+        String imageUrl = publicPath + "/" + COURT_IMAGE_DIRECTORY + "/" + fileName;
+        return new FileUploadResponse(imageId, fileName, imageUrl);
     }
 
     private void validateImage(MultipartFile file) {
-        if (file == null || file.isEmpty())
+        if (file == null || file.isEmpty()) {
             throw new BadRequestException("Image file is required");
-        if (file.getSize() > 10 * 1024 * 1024)
+        }
+        if (file.getSize() > MAX_IMAGE_SIZE_BYTES) {
             throw new BadRequestException("Image size must not exceed 10MB");
-        if (file.getContentType() == null || !TYPES.containsKey(file.getContentType()))
+        }
+        if (file.getContentType() == null || !ALLOWED_IMAGE_TYPES.containsKey(file.getContentType())) {
             throw new BadRequestException("Only PNG, JPG, JPEG and WEBP images are allowed");
+        }
     }
 
+    @Override
     @Transactional
     public List<FileUploadResponse> attachToCourt(Long courtId, List<MultipartFile> files) {
-        courtAccess.requireCanManage(courtId);
-        var court = courts.findById(courtId).orElseThrow(() -> new NotFoundException("Court not found"));
-        if (files == null || files.isEmpty())
+        courtAccessService.requireCanManage(courtId);
+        Court court = courtRepository.findById(courtId).orElseThrow(() -> new NotFoundException("Court not found"));
+
+        if (files == null || files.isEmpty()) {
             throw new BadRequestException("At least one image file is required");
+        }
         files.forEach(this::validateImage);
 
         List<FileUploadResponse> storedFiles = new ArrayList<>();
         try {
             for (MultipartFile file : files) {
-                var stored = storeCourtImage(file);
-                storedFiles.add(stored);
-                images.save(
-                        CourtImage.builder().id(stored.id()).court(court).fileName(stored.fileName()).url(stored.url())
-                                .build());
+                FileUploadResponse storedFile = storeCourtImage(file);
+                storedFiles.add(storedFile);
+
+                CourtImage courtImage = CourtImage.builder()
+                        .id(storedFile.id())
+                        .court(court)
+                        .fileName(storedFile.fileName())
+                        .url(storedFile.url())
+                        .build();
+                courtImageRepository.save(courtImage);
             }
-        } catch (RuntimeException ex) {
+        } catch (RuntimeException exception) {
             storedFiles.forEach(stored -> deleteStoredFileQuietly(stored.fileName()));
-            throw ex;
+            throw exception;
         }
+
         return storedFiles;
     }
 
     @Override
     @Transactional
     public void deleteCourtImage(UUID imageId) {
-        var image = images.findById(imageId).orElseThrow(() -> new NotFoundException("Court image not found"));
-        courtAccess.requireCanManage(image.getCourt().getId());
-        deleteStoredFile(image.getFileName());
-        images.delete(image);
+        CourtImage courtImage = courtImageRepository.findById(imageId)
+                .orElseThrow(() -> new NotFoundException("Court image not found"));
+
+        courtAccessService.requireCanManage(courtImage.getCourt().getId());
+        deleteStoredFile(courtImage.getFileName());
+        courtImageRepository.delete(courtImage);
     }
 
     private void deleteStoredFile(String fileName) {
-        Path directory = Paths.get(uploadDir, "courts").toAbsolutePath().normalize();
-        Path imagePath = directory.resolve(fileName).normalize();
-        if (!imagePath.startsWith(directory))
+        Path imageDirectory = getCourtImageDirectory();
+        Path imagePath = imageDirectory.resolve(fileName).normalize();
+
+        if (!imagePath.startsWith(imageDirectory)) {
             throw new BadRequestException("Invalid image path");
+        }
+
         try {
             Files.deleteIfExists(imagePath);
-        } catch (IOException ex) {
+        } catch (IOException exception) {
             throw new BadRequestException("Could not delete image");
         }
+    }
+
+    private Path getCourtImageDirectory() {
+        return Paths.get(uploadDir, COURT_IMAGE_DIRECTORY).toAbsolutePath().normalize();
     }
 
     private void deleteStoredFileQuietly(String fileName) {
