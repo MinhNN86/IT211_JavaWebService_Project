@@ -9,11 +9,11 @@ import org.springframework.web.cors.*;
 public class CorsConfig {
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
-        var config = new CorsConfiguration();
+        CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOriginPatterns(List.of("*"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
-        var source = new UrlBasedCorsConfigurationSource();
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;
     }

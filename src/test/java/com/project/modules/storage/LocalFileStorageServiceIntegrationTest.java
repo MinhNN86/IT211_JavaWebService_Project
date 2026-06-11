@@ -11,11 +11,14 @@ import java.util.Set;
 
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.web.servlet.MockMvc;
 
 import com.project.common.exception.BadRequestException;
 import com.project.modules.court.entity.Court;
@@ -26,6 +29,7 @@ import com.project.modules.storage.service.FileStorageService;
 import com.project.modules.user.repository.UserRepository;
 
 @SpringBootTest
+@AutoConfigureMockMvc
 class LocalFileStorageServiceIntegrationTest {
     private static final Path UPLOAD_DIRECTORY = Paths.get("build/test-uploads/courts").toAbsolutePath().normalize();
 
@@ -39,6 +43,8 @@ class LocalFileStorageServiceIntegrationTest {
     private CourtImageRepository images;
     @Autowired
     private UserRepository users;
+    @Autowired
+    private MockMvc mockMvc;
 
     @BeforeEach
     @AfterEach
@@ -96,6 +102,25 @@ class LocalFileStorageServiceIntegrationTest {
 
         assertThat(images.count()).isZero();
         assertThat(Files.exists(UPLOAD_DIRECTORY)).isFalse();
+    }
+
+    @Test
+    @WithMockUser(username = "manager", roles = "MANAGER")
+    void uploadResponseContainsAbsoluteImageUrl() throws Exception {
+        Court court = createCourt();
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                .multipart("/api/v1/manager/courts/{courtId}/images", court.getId())
+                .file(new MockMultipartFile("files", "court.png", "image/png", new byte[]{1, 2, 3})))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.data[0].url")
+                        .value(org.hamcrest.Matchers.startsWith("http://localhost/uploads/courts/")));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                .get("/api/v1/courts/{courtId}", court.getId()))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.data.images[0].url")
+                        .value(org.hamcrest.Matchers.startsWith("http://localhost/uploads/courts/")));
     }
 
     private Court createCourt() {

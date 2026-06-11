@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "927bcbd4-b64e-4bcb-997b-3b8ac41c15de",
     "name": "Badminton Booking API",
-    "description": "Chỉ cần import collection này, không cần import environment. Collection variables đã chứa baseUrl, tài khoản seed, token và ID. Có thể dùng Run collection để chạy tự động luồng chính. Upload và cleanup mặc định được bỏ qua; đổi biến điều khiển tương ứng thành `true` để chạy các nhóm đó. Đổi mật khẩu/logout nên chạy thủ công sau cùng.",
+    "description": "Chỉ cần import collection này, không cần import environment. Collection variables đã chứa baseUrl, tài khoản seed, token và ID. Có thể dùng Run collection để chạy tự động luồng chính. Cleanup mặc định được bỏ qua; đổi biến điều khiển tương ứng thành `true` để chạy nhóm đó. Upload cần chọn file trong Postman trước khi gửi. Đổi mật khẩu/logout nên chạy thủ công sau cùng.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "event": [
@@ -122,26 +122,6 @@
     {
       "key": "slotEnd",
       "value": "",
-      "type": "string"
-    },
-    {
-      "key": "uploadFilePath",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "uploadFilePath2",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "runFileUploads",
-      "value": "false",
-      "type": "string"
-    },
-    {
-      "key": "runCleanup",
-      "value": "false",
       "type": "string"
     }
   ],
@@ -294,22 +274,7 @@
           }
         },
         {
-          "name": "Refresh Customer Token",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const data = pm.response.json().data;",
-                  "pm.collectionVariables.set('customerAccessToken', data.accessToken);",
-                  "pm.test('Refresh response does not contain a refresh token', function () {",
-                  "    pm.expect(data).to.not.have.property('refreshToken');",
-                  "});"
-                ]
-              }
-            }
-          ],
+          "name": "Refresh Token",
           "request": {
             "auth": {
               "type": "noauth"
@@ -323,7 +288,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"refreshToken\": \"{{customerRefreshToken}}\"\n}"
+              "raw": "{\n  \"refreshToken\": \"\"\n}"
             },
             "url": "{{baseUrl}}/api/v1/auth/refresh",
             "description": "Dùng refresh token hiện tại để lấy access token mới. Response không trả refresh token mới, vì vậy biến `customerRefreshToken` được giữ nguyên."
@@ -889,19 +854,6 @@
     },
     {
       "name": "07 - File Upload",
-      "event": [
-        {
-          "listen": "prerequest",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "if (pm.collectionVariables.get('runFileUploads') !== 'true') {",
-              "    pm.execution.skipRequest();",
-              "}"
-            ]
-          }
-        }
-      ],
       "auth": {
         "type": "bearer",
         "bearer": [
@@ -915,36 +867,12 @@
       "item": [
         {
           "name": "Upload and Attach Court Image",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "if (pm.response.code === 200) {",
-                  "    pm.collectionVariables.set('imageId', pm.response.json().data[0].id);",
-                  "}"
-                ]
-              }
-            }
-          ],
           "request": {
             "method": "POST",
             "header": [],
             "body": {
               "mode": "formdata",
-              "formdata": [
-                {
-                  "key": "files",
-                  "type": "file",
-                  "src": "{{uploadFilePath}}"
-                },
-                {
-                  "key": "files",
-                  "type": "file",
-                  "src": "{{uploadFilePath2}}"
-                }
-              ]
+              "formdata": []
             },
             "url": "{{baseUrl}}/api/v1/manager/courts/{{courtId}}/images",
             "description": "Đặt `uploadFilePath`, `uploadFilePath2` hoặc chọn lại các file trong Postman trước khi gửi. Các ảnh được validate trước và lưu tuần tự."
@@ -1016,19 +944,6 @@
     {
       "name": "09 - Manual Cleanup",
       "description": "Xóa mềm dữ liệu setup. Chạy thủ công khi không cần dùng court/time slot đã tạo.",
-      "event": [
-        {
-          "listen": "prerequest",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "if (pm.collectionVariables.get('runCleanup') !== 'true') {",
-              "    pm.execution.skipRequest();",
-              "}"
-            ]
-          }
-        }
-      ],
       "auth": {
         "type": "bearer",
         "bearer": [
