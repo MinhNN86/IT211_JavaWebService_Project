@@ -24,7 +24,7 @@ public class GlobalExceptionHandler {
                         .map(e -> e.getField() + ": " + e.getDefaultMessage()).collect(Collectors.joining(", "))
                 : ex instanceof HttpMessageNotReadableException
                         ? "Malformed JSON request"
-                : ex.getMessage();
+                        : ex.getMessage();
         return error(HttpStatus.BAD_REQUEST, message, req);
     }
 

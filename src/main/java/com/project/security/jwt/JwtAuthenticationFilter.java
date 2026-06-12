@@ -33,6 +33,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final JwtTokenBlacklistService tokenBlacklistService;
     private final CustomUserDetailsService userDetailsService;
     private final ObjectMapper objectMapper;
 
@@ -47,6 +48,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String token = authorizationHeader.substring(BEARER_PREFIX.length());
         try {
+            if (tokenBlacklistService.isBlacklisted(token)) {
+                writeErrorResponse(response, request, HttpStatus.UNAUTHORIZED, "Access token has been logged out");
+                return;
+            }
+
             jwtTokenProvider.valid(token);
 
             UserDetails userDetails = userDetailsService.loadUserById(jwtTokenProvider.userId(token));

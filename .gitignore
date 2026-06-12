@@ -15,3 +15,5 @@ src/test/resources/application.properties
 .claude/
 skills-lock.json
 CLAUDE.md
+
+/docs

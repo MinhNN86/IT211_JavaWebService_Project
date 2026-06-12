@@ -6,8 +6,8 @@ import java.util.UUID;
 import jakarta.validation.constraints.*;
 
 public record CreateCourtRequest(
-                @NotBlank String name,
-                String description,
-                @NotBlank String address,
-                Set<UUID> managerIds) {
+        @NotBlank String name,
+        String description,
+        @NotBlank String address,
+        Set<UUID> managerIds) {
 }

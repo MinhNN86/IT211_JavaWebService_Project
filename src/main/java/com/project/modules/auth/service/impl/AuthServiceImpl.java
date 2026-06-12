@@ -30,6 +30,7 @@ import com.project.modules.auth.service.AuthService;
 import com.project.modules.user.entity.User;
 import com.project.modules.user.repository.UserRepository;
 import com.project.security.jwt.JwtProperties;
+import com.project.security.jwt.JwtTokenBlacklistService;
 import com.project.security.jwt.JwtTokenProvider;
 
 import lombok.RequiredArgsConstructor;
@@ -43,6 +44,7 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider jwtTokenProvider;
+    private final JwtTokenBlacklistService tokenBlacklistService;
     private final JwtProperties jwtProperties;
 
     public AuthResponse register(RegisterRequest request) {
@@ -86,7 +88,13 @@ public class AuthServiceImpl implements AuthService {
         return new RefreshResponse(accessToken, "Bearer");
     }
 
-    public void logout(LogoutRequest request) {
+    public void logout(LogoutRequest request, String accessToken) {
+        tokenBlacklistService.blacklist(accessToken);
+
+        if (request == null || request.refreshToken() == null || request.refreshToken().isBlank()) {
+            return;
+        }
+
         String currentUsername = SecurityUtils.currentUsername();
         RefreshToken refreshToken = refreshTokenRepository.findByToken(request.refreshToken())
                 .filter(token -> token.getUser().getUsername().equals(currentUsername))

@@ -11,7 +11,7 @@ public interface AuthService {
 
     RefreshResponse refresh(RefreshTokenRequest request);
 
-    void logout(LogoutRequest request);
+    void logout(LogoutRequest request, String accessToken);
 
     void changePassword(ChangePasswordRequest request);
 
