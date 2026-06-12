@@ -9,6 +9,8 @@ uploads/courts/*
 *.iml
 .DS_Store
 
+src/main/resources/application.properties
+src/test/resources/application.properties
 .agents/
 .claude/
 skills-lock.json
