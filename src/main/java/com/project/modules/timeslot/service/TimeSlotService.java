@@ -12,6 +12,8 @@ public interface TimeSlotService {
 
     List<TimeSlotResponse> createBulk(Long courtId, BulkCreateTimeSlotRequest r);
 
+    List<TimeSlotResponse> updatePrices(BulkUpdatePriceRequest r);
+
     TimeSlotResponse update(Long courtId, Long id, UpdateTimeSlotRequest r);
 
     void delete(Long courtId, Long id);

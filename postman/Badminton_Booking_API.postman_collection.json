@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "927bcbd4-b64e-4bcb-997b-3b8ac41c15de",
     "name": "Badminton Booking API",
-    "description": "Chỉ cần import collection này, không cần import environment. Collection variables đã chứa baseUrl, tài khoản seed, token và ID. Có thể dùng Run collection để chạy tự động luồng chính. Cleanup mặc định được bỏ qua; đổi biến điều khiển tương ứng thành `true` để chạy nhóm đó. Upload cần chọn file trong Postman trước khi gửi. Đổi mật khẩu/logout nên chạy thủ công sau cùng.",
+    "description": "Collection all-in-one để quản lý và kiểm thử Badminton Booking API.\n\n- Chạy tuần tự folder 01-06 để kiểm thử luồng chính.\n- Token và ID tạo mới được tự động lưu vào collection variables.\n- Folder 07-09 chứa các thao tác upload, tài khoản và cleanup; chỉ chọn chạy khi cần.\n- Mỗi request kiểm tra đúng HTTP status; collection kiểm tra response envelope JSON dùng chung.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "event": [
@@ -11,9 +11,20 @@
       "script": {
         "type": "text/javascript",
         "exec": [
-          "pm.test('Response status is successful', function () {",
-          "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
-          "});"
+          "const expectedStatus = Number(pm.variables.get('expectedStatus'));",
+          "pm.test(`Status code is ${expectedStatus}`, function () {",
+          "    pm.response.to.have.status(expectedStatus);",
+          "});",
+          "",
+          "if (pm.response.code !== 204 && pm.response.code >= 200 && pm.response.code < 300) {",
+          "    pm.test('Response is JSON with the standard API envelope', function () {",
+          "        pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');",
+          "        const json = pm.response.json();",
+          "        pm.expect(json).to.have.property('success', true);",
+          "        pm.expect(json).to.have.property('message').that.is.a('string');",
+          "        pm.expect(json).to.have.property('data');",
+          "    });",
+          "}"
         ]
       }
     }
@@ -22,107 +33,194 @@
     {
       "key": "baseUrl",
       "value": "http://localhost:8080",
-      "type": "string"
+      "type": "string",
+      "description": "URL gốc của API"
     },
     {
       "key": "defaultPassword",
       "value": "123456",
-      "type": "string"
+      "type": "string",
+      "description": "Mật khẩu của các tài khoản seed"
+    },
+    {
+      "key": "newPassword",
+      "value": "654321",
+      "type": "string",
+      "description": "Mật khẩu mới dùng cho request đổi mật khẩu"
     },
     {
       "key": "adminUsername",
       "value": "admin",
-      "type": "string"
+      "type": "string",
+      "description": "Tài khoản seed ADMIN"
     },
     {
       "key": "managerUsername",
       "value": "manager",
-      "type": "string"
+      "type": "string",
+      "description": "Tài khoản seed MANAGER"
     },
     {
       "key": "customerUsername",
       "value": "customer",
-      "type": "string"
+      "type": "string",
+      "description": "Tài khoản seed CUSTOMER"
     },
     {
       "key": "adminAccessToken",
       "value": "",
-      "type": "string"
+      "type": "string",
+      "description": "Tự lưu sau Login Admin"
     },
     {
       "key": "adminRefreshToken",
       "value": "",
-      "type": "string"
+      "type": "string",
+      "description": "Tự lưu sau Login Admin"
     },
     {
       "key": "managerAccessToken",
       "value": "",
-      "type": "string"
+      "type": "string",
+      "description": "Tự lưu sau Login Manager"
     },
     {
       "key": "managerRefreshToken",
       "value": "",
-      "type": "string"
+      "type": "string",
+      "description": "Tự lưu sau Login Manager"
     },
     {
       "key": "customerAccessToken",
       "value": "",
-      "type": "string"
+      "type": "string",
+      "description": "Tự lưu sau Login Customer hoặc Refresh Token"
     },
     {
       "key": "customerRefreshToken",
       "value": "",
-      "type": "string"
+      "type": "string",
+      "description": "Tự lưu sau Login Customer"
     },
     {
       "key": "registeredAccessToken",
       "value": "",
-      "type": "string"
+      "type": "string",
+      "description": "Tự lưu sau Register Customer"
+    },
+    {
+      "key": "registeredRefreshToken",
+      "value": "",
+      "type": "string",
+      "description": "Tự lưu sau Register Customer"
     },
     {
       "key": "courtId",
-      "value": "1",
-      "type": "string"
-    },
-    {
-      "key": "imageId",
       "value": "",
-      "type": "string"
+      "type": "string",
+      "description": "Tự lưu sau Create Court"
     },
     {
       "key": "timeSlotId",
-      "value": "1",
-      "type": "string"
+      "value": "",
+      "type": "string",
+      "description": "Tự lưu sau Create Time Slot"
+    },
+    {
+      "key": "bulkPriceGroupOneIds",
+      "value": "[]",
+      "type": "string",
+      "description": "Tự lưu nhóm ID đầu tiên sau Bulk Create Time Slots"
+    },
+    {
+      "key": "bulkPriceGroupTwoIds",
+      "value": "[]",
+      "type": "string",
+      "description": "Tự lưu nhóm ID thứ hai sau Bulk Create Time Slots"
     },
     {
       "key": "bookingId",
-      "value": "1",
-      "type": "string"
+      "value": "",
+      "type": "string",
+      "description": "Tự lưu sau Create Booking"
     },
     {
       "key": "userId",
-      "value": "1",
-      "type": "string"
+      "value": "",
+      "type": "string",
+      "description": "Tự lưu sau Create User"
     },
     {
       "key": "managerId",
       "value": "",
-      "type": "string"
+      "type": "string",
+      "description": "Tự lưu sau Create User"
+    },
+    {
+      "key": "imageId",
+      "value": "",
+      "type": "string",
+      "description": "Tự lưu từ file đầu tiên sau Upload"
     },
     {
       "key": "bookingDate",
       "value": "",
-      "type": "string"
+      "type": "string",
+      "description": "Tự đặt thành ngày hiện tại + 7 ngày trước Create Booking"
     },
     {
       "key": "slotStart",
-      "value": "",
-      "type": "string"
+      "value": "20:00",
+      "type": "string",
+      "description": "Giờ bắt đầu time slot đơn"
     },
     {
       "key": "slotEnd",
-      "value": "",
-      "type": "string"
+      "value": "21:00",
+      "type": "string",
+      "description": "Giờ kết thúc time slot đơn"
+    },
+    {
+      "key": "defaultPrice",
+      "value": "50000",
+      "type": "string",
+      "description": "Giá dùng cho nhóm time slot đầu tiên"
+    },
+    {
+      "key": "updatedPrice",
+      "value": "60000",
+      "type": "string",
+      "description": "Giá dùng khi cập nhật time slot"
+    },
+    {
+      "key": "bookingStatus",
+      "value": "CONFIRMED",
+      "type": "string",
+      "description": "Trạng thái dùng khi cập nhật booking"
+    },
+    {
+      "key": "page",
+      "value": "0",
+      "type": "string",
+      "description": "Trang mặc định cho endpoint phân trang"
+    },
+    {
+      "key": "size",
+      "value": "20",
+      "type": "string",
+      "description": "Số phần tử mặc định cho endpoint phân trang"
+    },
+    {
+      "key": "sortAsc",
+      "value": "id,asc",
+      "type": "string",
+      "description": "Sắp xếp tăng dần mặc định"
+    },
+    {
+      "key": "sortDesc",
+      "value": "id,desc",
+      "type": "string",
+      "description": "Sắp xếp giảm dần mặc định"
     }
   ],
   "item": [
@@ -137,6 +235,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
+                  "pm.variables.set('expectedStatus', '201');",
                   "const suffix = Date.now();",
                   "pm.variables.set('registerUsername', `customer_${suffix}`);",
                   "pm.variables.set('registerEmail', `customer_${suffix}@example.com`);"
@@ -148,9 +247,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "const json = pm.response.json();",
-                  "if (json.data) {",
-                  "    pm.collectionVariables.set('registeredAccessToken', json.data.accessToken);",
+                  "if (pm.response.code === 201) {",
+                  "    const data = pm.response.json().data;",
+                  "    pm.collectionVariables.set('registeredAccessToken', data.accessToken);",
+                  "    pm.collectionVariables.set('registeredRefreshToken', data.refreshToken);",
                   "}"
                 ]
               }
@@ -169,7 +269,12 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"fullName\": \"Postman Customer\",\n  \"username\": \"{{registerUsername}}\",\n  \"email\": \"{{registerEmail}}\",\n  \"password\": \"123456\",\n  \"phone\": \"0900000000\"\n}"
+              "raw": "{\n  \"fullName\": \"Postman Customer\",\n  \"username\": \"{{registerUsername}}\",\n  \"email\": \"{{registerEmail}}\",\n  \"password\": \"{{defaultPassword}}\",\n  \"phone\": \"0900000000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": "{{baseUrl}}/api/v1/auth/register"
           }
@@ -178,13 +283,22 @@
           "name": "Login Admin",
           "event": [
             {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.variables.set('expectedStatus', '200');"]
+              }
+            },
+            {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "const data = pm.response.json().data;",
-                  "pm.collectionVariables.set('adminAccessToken', data.accessToken);",
-                  "pm.collectionVariables.set('adminRefreshToken', data.refreshToken);"
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json().data;",
+                  "    pm.collectionVariables.set('adminAccessToken', data.accessToken);",
+                  "    pm.collectionVariables.set('adminRefreshToken', data.refreshToken);",
+                  "}"
                 ]
               }
             }
@@ -202,7 +316,12 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"{{adminUsername}}\",\n  \"password\": \"{{defaultPassword}}\"\n}"
+              "raw": "{\n  \"username\": \"{{adminUsername}}\",\n  \"password\": \"{{defaultPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": "{{baseUrl}}/api/v1/auth/login"
           }
@@ -211,13 +330,22 @@
           "name": "Login Manager",
           "event": [
             {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.variables.set('expectedStatus', '200');"]
+              }
+            },
+            {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "const data = pm.response.json().data;",
-                  "pm.collectionVariables.set('managerAccessToken', data.accessToken);",
-                  "pm.collectionVariables.set('managerRefreshToken', data.refreshToken);"
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json().data;",
+                  "    pm.collectionVariables.set('managerAccessToken', data.accessToken);",
+                  "    pm.collectionVariables.set('managerRefreshToken', data.refreshToken);",
+                  "}"
                 ]
               }
             }
@@ -235,7 +363,12 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"{{managerUsername}}\",\n  \"password\": \"{{defaultPassword}}\"\n}"
+              "raw": "{\n  \"username\": \"{{managerUsername}}\",\n  \"password\": \"{{defaultPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": "{{baseUrl}}/api/v1/auth/login"
           }
@@ -244,13 +377,22 @@
           "name": "Login Customer",
           "event": [
             {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.variables.set('expectedStatus', '200');"]
+              }
+            },
+            {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "const data = pm.response.json().data;",
-                  "pm.collectionVariables.set('customerAccessToken', data.accessToken);",
-                  "pm.collectionVariables.set('customerRefreshToken', data.refreshToken);"
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json().data;",
+                  "    pm.collectionVariables.set('customerAccessToken', data.accessToken);",
+                  "    pm.collectionVariables.set('customerRefreshToken', data.refreshToken);",
+                  "}"
                 ]
               }
             }
@@ -268,7 +410,12 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"{{customerUsername}}\",\n  \"password\": \"{{defaultPassword}}\"\n}"
+              "raw": "{\n  \"username\": \"{{customerUsername}}\",\n  \"password\": \"{{defaultPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": "{{baseUrl}}/api/v1/auth/login"
           }
@@ -288,7 +435,12 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"refreshToken\": \"\"\n}"
+              "raw": "{\n  \"refreshToken\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": "{{baseUrl}}/api/v1/auth/refresh",
             "description": "Dùng refresh token hiện tại để lấy access token mới. Response không trả refresh token mới, vì vậy biến `customerRefreshToken` được giữ nguyên."
@@ -309,12 +461,27 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"customer@demo.local\"\n}"
+              "raw": "{\n  \"email\": \"customer@demo.local\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": "{{baseUrl}}/api/v1/auth/forgot-password"
-          }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.variables.set('expectedStatus', '200');"]
+              }
+            }
+          ]
         }
-      ]
+      ],
+      "description": "Đăng ký, đăng nhập ba role, refresh token và kiểm tra forgot-password. Token được tự động lưu."
     },
     {
       "name": "02 - Manager Setup",
@@ -333,12 +500,21 @@
           "name": "Create Court",
           "event": [
             {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.variables.set('expectedStatus', '201');"]
+              }
+            },
+            {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "const data = pm.response.json().data;",
-                  "pm.collectionVariables.set('courtId', data.id);"
+                  "if (pm.response.code === 201) {",
+                  "    const data = pm.response.json().data;",
+                  "    pm.collectionVariables.set('courtId', data.id);",
+                  "}"
                 ]
               }
             }
@@ -353,7 +529,12 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Postman Court {{$timestamp}}\",\n  \"description\": \"Court created by Postman\",\n  \"address\": \"123 Test Street\"\n}"
+              "raw": "{\n  \"name\": \"Postman Court {{$timestamp}}\",\n  \"description\": \"Court created by Postman\",\n  \"address\": \"123 Test Street\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": "{{baseUrl}}/api/v1/manager/courts"
           }
@@ -370,10 +551,24 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Postman Court Updated\",\n  \"description\": \"Updated by Postman\",\n  \"address\": \"456 Test Street\",\n  \"status\": \"ACTIVE\"\n}"
+              "raw": "{\n  \"name\": \"Postman Court Updated\",\n  \"description\": \"Updated by Postman\",\n  \"address\": \"456 Test Street\",\n  \"status\": \"ACTIVE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": "{{baseUrl}}/api/v1/manager/courts/{{courtId}}"
-          }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.variables.set('expectedStatus', '200');"]
+              }
+            }
+          ]
         },
         {
           "name": "Create Time Slot",
@@ -382,10 +577,7 @@
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
-                "exec": [
-                  "pm.collectionVariables.set('slotStart', '20:00');",
-                  "pm.collectionVariables.set('slotEnd', '21:00');"
-                ]
+                "exec": ["pm.variables.set('expectedStatus', '201');"]
               }
             },
             {
@@ -393,8 +585,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "const data = pm.response.json().data;",
-                  "pm.collectionVariables.set('timeSlotId', data.id);"
+                  "if (pm.response.code === 201) {",
+                  "    const data = pm.response.json().data;",
+                  "    pm.collectionVariables.set('timeSlotId', data.id);",
+                  "}"
                 ]
               }
             }
@@ -407,9 +601,14 @@
                 "value": "application/json"
               }
             ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"startTime\": \"{{slotStart}}\",\n  \"endTime\": \"{{slotEnd}}\",\n  \"price\": 50000\n}"
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"startTime\": \"{{slotStart}}\",\n  \"endTime\": \"{{slotEnd}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": "{{baseUrl}}/api/v1/manager/courts/{{courtId}}/time-slots"
           }
@@ -418,21 +617,28 @@
           "name": "Bulk Create Time Slots",
           "event": [
             {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.variables.set('expectedStatus', '201');"]
+              }
+            },
+            {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status code is 201', function () {",
-                  "    pm.response.to.have.status(201);",
-                  "});",
-                  "",
-                  "pm.test('Creates eight 30-minute time slots', function () {",
+                  "if (pm.response.code === 201) {",
                   "    const data = pm.response.json().data;",
-                  "    pm.expect(data).to.be.an('array').with.lengthOf(8);",
-                  "    pm.expect(data[0].startTime).to.eql('06:00');",
-                  "    pm.expect(data[7].endTime).to.eql('10:00');",
-                  "    pm.expect(data.every(slot => Number(slot.price) === 50000)).to.be.true;",
-                  "});"
+              "    pm.test('Creates eight 30-minute time slots', function () {",
+              "        pm.expect(data).to.be.an('array').with.lengthOf(8);",
+              "        pm.expect(data[0].startTime).to.eql('06:00');",
+              "        pm.expect(data[7].endTime).to.eql('10:00');",
+              "        pm.expect(data.every(slot => Number(slot.price) === 0)).to.be.true;",
+              "    });",
+              "    pm.collectionVariables.set('bulkPriceGroupOneIds', JSON.stringify(data.slice(0, 4).map(slot => slot.id)));",
+              "    pm.collectionVariables.set('bulkPriceGroupTwoIds', JSON.stringify(data.slice(4).map(slot => slot.id)));",
+              "}"
                 ]
               }
             }
@@ -445,16 +651,71 @@
                 "value": "application/json"
               }
             ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"startTime\": \"06:00\",\n  \"endTime\": \"10:00\",\n  \"durationMinutes\": 30,\n  \"price\": 50000\n}"
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"startTime\": \"06:00\",\n  \"endTime\": \"10:00\",\n  \"durationMinutes\": 30\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": "{{baseUrl}}/api/v1/manager/courts/{{courtId}}/time-slots/bulk",
             "description": "Tạo nhanh 8 khung giờ, mỗi khung 30 phút, từ 06:00 đến 10:00. Có thể đổi durationMinutes thành 60."
+      }
+    },
+    {
+      "name": "Bulk Update Time Slot Prices",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.variables.set('expectedStatus', '200');"
+            ]
           }
         },
         {
-          "name": "Update Time Slot",
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "    const data = pm.response.json().data;",
+              "    pm.test('Updates two time slot price groups', function () {",
+              "        pm.expect(data).to.be.an('array').with.lengthOf(8);",
+              "        pm.expect(data.slice(0, 4).every(slot => Number(slot.price) === Number(pm.collectionVariables.get('defaultPrice')))).to.be.true;",
+              "        pm.expect(data.slice(4).every(slot => Number(slot.price) === Number(pm.collectionVariables.get('updatedPrice')))).to.be.true;",
+              "    });",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"entries\": [\n    {\n      \"timeSlotIds\": {{bulkPriceGroupOneIds}},\n      \"price\": {{defaultPrice}}\n    },\n    {\n      \"timeSlotIds\": {{bulkPriceGroupTwoIds}},\n      \"price\": {{updatedPrice}}\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{baseUrl}}/api/v1/manager/time-slots/prices",
+        "description": "Cập nhật giá nhanh cho nhiều nhóm time slot. Mỗi nhóm có thể dùng một mức giá khác nhau."
+      }
+    },
+    {
+      "name": "Update Time Slot",
           "request": {
             "method": "PUT",
             "header": [
@@ -465,12 +726,27 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"startTime\": \"{{slotStart}}\",\n  \"endTime\": \"{{slotEnd}}\",\n  \"price\": 60000,\n  \"active\": true\n}"
+              "raw": "{\n  \"startTime\": \"{{slotStart}}\",\n  \"endTime\": \"{{slotEnd}}\",\n  \"price\": {{updatedPrice}},\n  \"active\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": "{{baseUrl}}/api/v1/manager/courts/{{courtId}}/time-slots/{{timeSlotId}}"
-          }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.variables.set('expectedStatus', '200');"]
+              }
+            }
+          ]
         }
-      ]
+      ],
+      "description": "MANAGER tạo court và time slot dùng cho các folder kiểm thử tiếp theo."
     },
     {
       "name": "03 - Public Courts and Time Slots",
@@ -484,7 +760,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/courts?name=&status=ACTIVE&page=0&size=20&sort=id,asc",
+              "raw": "{{baseUrl}}/api/v1/courts?name=&status=ACTIVE&page={{page}}&size={{size}}&sort={{sortAsc}}",
               "host": ["{{baseUrl}}"],
               "path": ["api", "v1", "courts"],
               "query": [
@@ -499,19 +775,28 @@
                 },
                 {
                   "key": "page",
-                  "value": "0"
+                  "value": "{{page}}"
                 },
                 {
                   "key": "size",
-                  "value": "20"
+                  "value": "{{size}}"
                 },
                 {
                   "key": "sort",
-                  "value": "id,asc"
+                  "value": "{{sortAsc}}"
                 }
               ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.variables.set('expectedStatus', '200');"]
+              }
+            }
+          ]
         },
         {
           "name": "Get Court",
@@ -522,7 +807,16 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/v1/courts/{{courtId}}"
-          }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.variables.set('expectedStatus', '200');"]
+              }
+            }
+          ]
         },
         {
           "name": "List Time Slots",
@@ -533,9 +827,19 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/v1/courts/{{courtId}}/time-slots"
-          }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.variables.set('expectedStatus', '200');"]
+              }
+            }
+          ]
         }
-      ]
+      ],
+      "description": "Các endpoint GET công khai, không cần access token."
     },
     {
       "name": "04 - Customer Profile and Bookings",
@@ -556,7 +860,16 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/v1/profile"
-          }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.variables.set('expectedStatus', '200');"]
+              }
+            }
+          ]
         },
         {
           "name": "Update Profile",
@@ -570,10 +883,24 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"fullName\": \"Customer Updated\",\n  \"email\": \"customer@demo.local\",\n  \"phone\": \"0912345678\"\n}"
+              "raw": "{\n  \"fullName\": \"Customer Updated\",\n  \"email\": \"customer@demo.local\",\n  \"phone\": \"0912345678\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": "{{baseUrl}}/api/v1/profile"
-          }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.variables.set('expectedStatus', '200');"]
+              }
+            }
+          ]
         },
         {
           "name": "Create Booking",
@@ -583,6 +910,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
+                  "pm.variables.set('expectedStatus', '201');",
                   "const date = new Date();",
                   "date.setDate(date.getDate() + 7);",
                   "pm.collectionVariables.set('bookingDate', date.toISOString().slice(0, 10));"
@@ -594,8 +922,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "const data = pm.response.json().data;",
-                  "pm.collectionVariables.set('bookingId', data.id);"
+                  "if (pm.response.code === 201) {",
+                  "    const data = pm.response.json().data;",
+                  "    pm.collectionVariables.set('bookingId', data.id);",
+                  "}"
                 ]
               }
             }
@@ -610,7 +940,12 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"courtId\": {{courtId}},\n  \"timeSlotIds\": [{{timeSlotId}}],\n  \"bookingDate\": \"{{bookingDate}}\",\n  \"note\": \"Booking created by Postman\"\n}"
+              "raw": "{\n  \"courtId\": {{courtId}},\n  \"timeSlotIds\": [{{timeSlotId}}],\n  \"bookingDate\": \"{{bookingDate}}\",\n  \"note\": \"Booking created by Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": "{{baseUrl}}/api/v1/customer/bookings"
           }
@@ -620,10 +955,20 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/api/v1/customer/bookings?page=0&size=20&sort=id,desc"
-          }
+            "url": "{{baseUrl}}/api/v1/customer/bookings?page={{page}}&size={{size}}&sort={{sortDesc}}"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.variables.set('expectedStatus', '200');"]
+              }
+            }
+          ]
         }
-      ]
+      ],
+      "description": "CUSTOMER xem/cập nhật profile và tạo booking trên dữ liệu từ folder 02."
     },
     {
       "name": "05 - Manager Bookings",
@@ -643,8 +988,17 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/api/v1/manager/bookings?page=0&size=20&sort=id,desc"
-          }
+            "url": "{{baseUrl}}/api/v1/manager/bookings?page={{page}}&size={{size}}&sort={{sortDesc}}"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.variables.set('expectedStatus', '200');"]
+              }
+            }
+          ]
         },
         {
           "name": "Get Booking",
@@ -652,7 +1006,16 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/v1/manager/bookings/{{bookingId}}"
-          }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.variables.set('expectedStatus', '200');"]
+              }
+            }
+          ]
         },
         {
           "name": "Update Booking Status",
@@ -666,16 +1029,31 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"status\": \"CONFIRMED\"\n}"
+              "raw": "{\n  \"status\": \"{{bookingStatus}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": "{{baseUrl}}/api/v1/manager/bookings/{{bookingId}}/status"
-          }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.variables.set('expectedStatus', '200');"]
+              }
+            }
+          ]
         }
-      ]
+      ],
+      "description": "MANAGER xem và cập nhật booking vừa tạo."
     },
     {
       "name": "06 - Admin Users and Court Managers",
-      "description": "Tạo một manager thứ hai, thêm vào sân đã tạo, kiểm tra danh sách quản lý, sau đó update, disable và xóa user.",
+      "description": "ADMIN quản lý user và quan hệ nhiều manager cùng quản lý một court.",
       "auth": {
         "type": "bearer",
         "bearer": [
@@ -692,8 +1070,17 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/api/v1/admin/users?keyword=&page=0&size=20&sort=id,asc"
-          }
+            "url": "{{baseUrl}}/api/v1/admin/users?keyword=&page={{page}}&size={{size}}&sort={{sortAsc}}"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.variables.set('expectedStatus', '200');"]
+              }
+            }
+          ]
         },
         {
           "name": "Create User",
@@ -703,6 +1090,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
+                  "pm.variables.set('expectedStatus', '201');",
                   "const suffix = Date.now();",
                   "pm.variables.set('newUsername', `postman_manager_${suffix}`);",
                   "pm.variables.set('newEmail', `postman_manager_${suffix}@example.com`);"
@@ -714,12 +1102,14 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "const data = pm.response.json().data;",
-                  "pm.collectionVariables.set('userId', data.id);",
-                  "pm.collectionVariables.set('managerId', data.id);",
-                  "pm.test('Created user has MANAGER role', function () {",
-                  "    pm.expect(data.role).to.eql('MANAGER');",
-                  "});"
+                  "if (pm.response.code === 201) {",
+                  "    const data = pm.response.json().data;",
+                  "    pm.collectionVariables.set('userId', data.id);",
+                  "    pm.collectionVariables.set('managerId', data.id);",
+                  "    pm.test('Created user has MANAGER role', function () {",
+                  "        pm.expect(data.role).to.eql('MANAGER');",
+                  "    });",
+                  "}"
                 ]
               }
             }
@@ -734,7 +1124,12 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"fullName\": \"Postman Manager\",\n  \"username\": \"{{newUsername}}\",\n  \"email\": \"{{newEmail}}\",\n  \"password\": \"123456\",\n  \"phone\": \"0909999999\",\n  \"role\": \"MANAGER\"\n}"
+              "raw": "{\n  \"fullName\": \"Postman Manager\",\n  \"username\": \"{{newUsername}}\",\n  \"email\": \"{{newEmail}}\",\n  \"password\": \"{{defaultPassword}}\",\n  \"phone\": \"0909999999\",\n  \"role\": \"MANAGER\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": "{{baseUrl}}/api/v1/admin/users"
           }
@@ -743,14 +1138,23 @@
           "name": "Add Manager to Court",
           "event": [
             {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.variables.set('expectedStatus', '200');"]
+              }
+            },
+            {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "const data = pm.response.json().data;",
-                  "pm.test('Added requested manager to court', function () {",
-                  "    pm.expect(data.id).to.eql(pm.collectionVariables.get('managerId'));",
-                  "});"
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json().data;",
+                  "    pm.test('Added requested manager to court', function () {",
+                  "        pm.expect(data.id).to.eql(pm.collectionVariables.get('managerId'));",
+                  "    });",
+                  "}"
                 ]
               }
             }
@@ -766,17 +1170,23 @@
           "name": "List Court Managers",
           "event": [
             {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.variables.set('expectedStatus', '200');"]
+              }
+            },
+            {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "const managers = pm.response.json().data;",
-                  "pm.test('Court contains newly assigned manager', function () {",
-                  "    pm.expect(managers.map(manager => manager.id)).to.include(pm.collectionVariables.get('managerId'));",
-                  "});",
-                  "pm.test('Court has multiple managers', function () {",
-                  "    pm.expect(managers.length).to.be.at.least(2);",
-                  "});"
+                  "if (pm.response.code === 200) {",
+                  "    const managers = pm.response.json().data;",
+                  "    pm.test('Court contains the newly assigned manager', function () {",
+                  "        pm.expect(managers.map(manager => manager.id)).to.include(pm.collectionVariables.get('managerId'));",
+                  "    });",
+                  "}"
                 ]
               }
             }
@@ -791,14 +1201,10 @@
           "name": "Remove Manager from Court",
           "event": [
             {
-              "listen": "test",
+              "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
-                "exec": [
-                  "pm.test('Manager removed from court', function () {",
-                  "    pm.expect(pm.response.code).to.eql(204);",
-                  "});"
-                ]
+                "exec": ["pm.variables.set('expectedStatus', '204');"]
               }
             }
           ],
@@ -815,7 +1221,16 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/v1/admin/users/{{userId}}"
-          }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.variables.set('expectedStatus', '200');"]
+              }
+            }
+          ]
         },
         {
           "name": "Update User",
@@ -829,10 +1244,24 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"fullName\": \"Postman Manager Updated\",\n  \"email\": \"updated_{{$timestamp}}@example.com\",\n  \"phone\": \"0908888888\",\n  \"isActive\": true,\n  \"role\": \"MANAGER\"\n}"
+              "raw": "{\n  \"fullName\": \"Postman Manager Updated\",\n  \"email\": \"updated_{{$timestamp}}@example.com\",\n  \"phone\": \"0908888888\",\n  \"isActive\": true,\n  \"role\": \"MANAGER\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": "{{baseUrl}}/api/v1/admin/users/{{userId}}"
-          }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.variables.set('expectedStatus', '200');"]
+              }
+            }
+          ]
         },
         {
           "name": "Disable User",
@@ -840,7 +1269,16 @@
             "method": "PATCH",
             "header": [],
             "url": "{{baseUrl}}/api/v1/admin/users/{{userId}}/disable"
-          }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.variables.set('expectedStatus', '200');"]
+              }
+            }
+          ]
         },
         {
           "name": "Delete User (Hard Delete)",
@@ -848,7 +1286,16 @@
             "method": "DELETE",
             "header": [],
             "url": "{{baseUrl}}/api/v1/admin/users/{{userId}}"
-          }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.variables.set('expectedStatus', '204');"]
+              }
+            }
+          ]
         }
       ]
     },
@@ -872,11 +1319,42 @@
             "header": [],
             "body": {
               "mode": "formdata",
-              "formdata": []
+              "formdata": [
+                {
+                  "key": "files",
+                  "type": "file",
+                  "src": [],
+                  "description": "Chọn một hoặc nhiều file ảnh trước khi gửi request."
+                }
+              ]
             },
             "url": "{{baseUrl}}/api/v1/manager/courts/{{courtId}}/images",
-            "description": "Đặt `uploadFilePath`, `uploadFilePath2` hoặc chọn lại các file trong Postman trước khi gửi. Các ảnh được validate trước và lưu tuần tự."
-          }
+            "description": "Chọn một hoặc nhiều file ảnh trong trường `files`. `imageId` của file đầu tiên được tự động lưu."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.variables.set('expectedStatus', '200');"]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const files = pm.response.json().data;",
+                  "    pm.test('At least one file is uploaded', function () {",
+                  "        pm.expect(files).to.be.an('array').that.is.not.empty;",
+                  "    });",
+                  "    pm.collectionVariables.set('imageId', files[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Delete Court Image",
@@ -885,26 +1363,35 @@
             "header": [],
             "url": "{{baseUrl}}/api/v1/manager/courts/images/{{imageId}}",
             "description": "Đặt `imageId` bằng UUID trả về khi upload ảnh hoặc lấy từ response chi tiết sân."
-          }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.variables.set('expectedStatus', '204');"]
+              }
+            }
+          ]
         }
-      ]
+      ],
+      "description": "Chọn file ảnh trong request upload trước khi chạy folder."
     },
     {
       "name": "08 - Manual Account Actions",
-      "description": "Các request trong nhóm này thay đổi hoặc thu hồi thông tin đăng nhập. Nên chạy thủ công sau cùng.",
       "auth": {
         "type": "bearer",
         "bearer": [
           {
             "key": "token",
-            "value": "{{customerAccessToken}}",
+            "value": "{{registeredAccessToken}}",
             "type": "string"
           }
         ]
       },
       "item": [
         {
-          "name": "Change Password",
+          "name": "Change Password (Registered Customer)",
           "request": {
             "method": "POST",
             "header": [
@@ -915,14 +1402,28 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"currentPassword\": \"{{defaultPassword}}\",\n  \"newPassword\": \"654321\"\n}"
+              "raw": "{\n  \"currentPassword\": \"{{defaultPassword}}\",\n  \"newPassword\": \"{{newPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": "{{baseUrl}}/api/v1/auth/change-password",
-            "description": "Request này đổi mật khẩu tài khoản customer từ `123456` thành `654321`."
-          }
+            "description": "Đổi mật khẩu của tài khoản được tạo bởi Register Customer, không tác động tài khoản seed."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.variables.set('expectedStatus', '200');"]
+              }
+            }
+          ]
         },
         {
-          "name": "Logout Customer",
+          "name": "Logout Registered Customer",
           "request": {
             "method": "POST",
             "header": [
@@ -933,17 +1434,32 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"refreshToken\": \"{{customerRefreshToken}}\"\n}"
+              "raw": "{\n  \"refreshToken\": \"{{registeredRefreshToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": "{{baseUrl}}/api/v1/auth/logout",
-            "description": "Request này xóa refresh token hiện tại của customer. Access token vẫn dùng được đến khi hết hạn."
-          }
+            "description": "Xóa refresh token của tài khoản được tạo bởi Register Customer. Access token vẫn dùng được đến khi hết hạn."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.variables.set('expectedStatus', '200');"]
+              }
+            }
+          ]
         }
-      ]
+      ],
+      "description": "Dùng tài khoản vừa đăng ký để kiểm thử đổi mật khẩu và logout mà không làm thay đổi tài khoản seed."
     },
     {
       "name": "09 - Manual Cleanup",
-      "description": "Xóa mềm dữ liệu setup. Chạy thủ công khi không cần dùng court/time slot đã tạo.",
+      "description": "Xóa mềm dữ liệu do folder 02 tạo. Nên chạy sau các folder cần dùng court và time slot.",
       "auth": {
         "type": "bearer",
         "bearer": [
@@ -956,20 +1472,38 @@
       },
       "item": [
         {
-          "name": "Delete Court (Soft Delete)",
-          "request": {
-            "method": "DELETE",
-            "header": [],
-            "url": "{{baseUrl}}/api/v1/manager/courts/{{courtId}}"
-          }
-        },
-        {
           "name": "Delete Time Slot (Soft Delete)",
           "request": {
             "method": "DELETE",
             "header": [],
             "url": "{{baseUrl}}/api/v1/manager/courts/{{courtId}}/time-slots/{{timeSlotId}}"
-          }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.variables.set('expectedStatus', '204');"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete Court (Soft Delete)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/manager/courts/{{courtId}}"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.variables.set('expectedStatus', '204');"]
+              }
+            }
+          ]
         }
       ]
     }

@@ -37,6 +37,11 @@ public class TimeSlotController {
                 .body(ApiResponse.success("Time slots created", service.createBulk(courtId, r)));
     }
 
+    @PatchMapping("/api/v1/manager/time-slots/prices")
+    ApiResponse<List<TimeSlotResponse>> updatePrices(@Valid @RequestBody BulkUpdatePriceRequest r) {
+        return ApiResponse.success("Prices updated", service.updatePrices(r));
+    }
+
     @PutMapping("/api/v1/manager/courts/{courtId}/time-slots/{id}")
     ApiResponse<TimeSlotResponse> update(@PathVariable Long courtId, @PathVariable Long id,
             @Valid @RequestBody UpdateTimeSlotRequest r) {
