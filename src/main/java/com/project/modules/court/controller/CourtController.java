@@ -5,6 +5,7 @@ import org.springframework.web.bind.annotation.*;
 
 import com.project.common.enums.CourtStatus;
 import com.project.common.response.*;
+import com.project.modules.court.dto.response.CourtDetailResponse;
 import com.project.modules.court.dto.response.CourtResponse;
 import com.project.modules.court.service.CourtService;
 
@@ -22,7 +23,7 @@ public class CourtController {
     }
 
     @GetMapping("/{id}")
-    ApiResponse<CourtResponse> one(@PathVariable Long id) {
+    ApiResponse<CourtDetailResponse> one(@PathVariable Long id) {
         return ApiResponse.success("Court retrieved", service.findById(id));
     }
 }

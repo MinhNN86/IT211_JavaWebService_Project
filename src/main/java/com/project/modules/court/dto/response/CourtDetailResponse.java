@@ -1,0 +1,16 @@
+package com.project.modules.court.dto.response;
+
+import java.util.List;
+
+import com.project.common.enums.CourtStatus;
+import com.project.modules.timeslot.dto.response.TimeSlotResponse;
+
+public record CourtDetailResponse(
+        Long id,
+        String name,
+        String description,
+        String address,
+        CourtStatus status,
+        List<CourtImageResponse> images,
+        List<TimeSlotResponse> timeSlots) {
+}

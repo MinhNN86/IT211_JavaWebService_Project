@@ -56,6 +56,21 @@ class TimeSlotAuthorizationIntegrationTest {
     }
 
     @Test
+    void courtDetailIncludesTimeSlotsOrderedByStartTime() throws Exception {
+        var laterSlot = createTimeSlot(managedCourt, 7, 0, 8, 0);
+        var earlierSlot = createTimeSlot(managedCourt, 6, 0, 6, 30);
+
+        mockMvc.perform(get("/api/v1/courts/{courtId}", managedCourt.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id").value(managedCourt.getId()))
+                .andExpect(jsonPath("$.data.timeSlots.length()").value(2))
+                .andExpect(jsonPath("$.data.timeSlots[0].id").value(earlierSlot.getId()))
+                .andExpect(jsonPath("$.data.timeSlots[0].startTime").value("06:00"))
+                .andExpect(jsonPath("$.data.timeSlots[1].id").value(laterSlot.getId()))
+                .andExpect(jsonPath("$.data.timeSlots[1].startTime").value("07:00"));
+    }
+
+    @Test
     @WithMockUser(username = "manager", roles = "MANAGER")
     void managerCanOnlyManageAssignedCourtTimeSlots() throws Exception {
         var response = mockMvc

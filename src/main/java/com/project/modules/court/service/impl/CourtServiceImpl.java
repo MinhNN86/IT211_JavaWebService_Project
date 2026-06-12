@@ -21,6 +21,7 @@ import com.project.common.response.PageResponse;
 import com.project.common.util.SecurityUtils;
 import com.project.modules.court.dto.request.CreateCourtRequest;
 import com.project.modules.court.dto.request.UpdateCourtRequest;
+import com.project.modules.court.dto.response.CourtDetailResponse;
 import com.project.modules.court.dto.response.CourtManagerResponse;
 import com.project.modules.court.dto.response.CourtResponse;
 import com.project.modules.court.entity.Court;
@@ -28,6 +29,7 @@ import com.project.modules.court.mapper.CourtMapper;
 import com.project.modules.court.repository.CourtRepository;
 import com.project.modules.court.service.CourtAccessService;
 import com.project.modules.court.service.CourtService;
+import com.project.modules.timeslot.service.TimeSlotService;
 import com.project.modules.user.entity.User;
 import com.project.modules.user.repository.UserRepository;
 
@@ -41,6 +43,7 @@ public class CourtServiceImpl implements CourtService {
     private final CourtMapper courtMapper;
     private final UserRepository userRepository;
     private final CourtAccessService courtAccessService;
+    private final TimeSlotService timeSlotService;
 
     @Override
     @Transactional(readOnly = true)
@@ -55,9 +58,9 @@ public class CourtServiceImpl implements CourtService {
 
     @Override
     @Transactional(readOnly = true)
-    public CourtResponse findById(Long id) {
+    public CourtDetailResponse findById(Long id) {
         Court court = findCourtById(id);
-        return courtMapper.toResponse(court);
+        return courtMapper.toDetailResponse(court, timeSlotService.findByCourt(id));
     }
 
     @Override

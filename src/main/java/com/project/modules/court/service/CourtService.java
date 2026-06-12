@@ -8,13 +8,14 @@ import org.springframework.data.domain.Pageable;
 import com.project.common.enums.CourtStatus;
 import com.project.common.response.PageResponse;
 import com.project.modules.court.dto.request.*;
+import com.project.modules.court.dto.response.CourtDetailResponse;
 import com.project.modules.court.dto.response.CourtManagerResponse;
 import com.project.modules.court.dto.response.CourtResponse;
 
 public interface CourtService {
     PageResponse<CourtResponse> findAll(String name, CourtStatus status, Pageable pageable);
 
-    CourtResponse findById(Long id);
+    CourtDetailResponse findById(Long id);
 
     CourtResponse create(CreateCourtRequest request);
 
