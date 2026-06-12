@@ -27,7 +27,7 @@ public class CourtImage {
     private Court court;
     @Column(nullable = false)
     private String fileName;
-    @Column(nullable = false)
+    @Column(nullable = false, length = 512)
     private String url;
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;

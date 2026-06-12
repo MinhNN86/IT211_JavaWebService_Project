@@ -1,17 +1,10 @@
 package com.project.modules.storage.service.impl;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -23,46 +16,36 @@ import com.project.modules.court.entity.CourtImage;
 import com.project.modules.court.repository.CourtImageRepository;
 import com.project.modules.court.repository.CourtRepository;
 import com.project.modules.court.service.CourtAccessService;
+import com.project.modules.storage.config.CloudinaryProperties;
 import com.project.modules.storage.dto.response.FileUploadResponse;
+import com.project.modules.storage.service.CloudinaryStorageClient;
 import com.project.modules.storage.service.FileStorageService;
 
 import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class LocalFileStorageServiceImpl implements FileStorageService {
+public class CloudinaryFileStorageServiceImpl implements FileStorageService {
     private static final long MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
-    private static final String COURT_IMAGE_DIRECTORY = "courts";
-    private static final Map<String, String> ALLOWED_IMAGE_TYPES = Map.of("image/png", ".png", "image/jpeg", ".jpg",
-            "image/jpg", ".jpg", "image/webp", ".webp");
+    private static final Map<String, String> ALLOWED_IMAGE_TYPES = Map.of("image/png", "png", "image/jpeg", "jpg",
+            "image/jpg", "jpg", "image/webp", "webp");
 
     private final CourtRepository courtRepository;
     private final CourtImageRepository courtImageRepository;
     private final CourtAccessService courtAccessService;
-
-    @Value("${app.file.upload-dir}")
-    private String uploadDir;
-
-    @Value("${app.file.public-path}")
-    private String publicPath;
+    private final CloudinaryStorageClient cloudinaryStorageClient;
+    private final CloudinaryProperties cloudinaryProperties;
 
     @Override
     public FileUploadResponse storeCourtImage(MultipartFile file) {
         validateImage(file);
 
         UUID imageId = UUID.randomUUID();
-        String fileName = imageId + ALLOWED_IMAGE_TYPES.get(file.getContentType());
-        Path imageDirectory = getCourtImageDirectory();
+        String imageKey = imageId.toString();
+        String publicId = toCloudinaryPublicId(imageKey);
+        CloudinaryStorageClient.UploadedAsset uploadedAsset = cloudinaryStorageClient.uploadImage(file, publicId);
 
-        try (InputStream inputStream = file.getInputStream()) {
-            Files.createDirectories(imageDirectory);
-            Files.copy(inputStream, imageDirectory.resolve(fileName), StandardCopyOption.REPLACE_EXISTING);
-        } catch (IOException exception) {
-            throw new BadRequestException("Could not store image");
-        }
-
-        String imageUrl = publicPath + "/" + COURT_IMAGE_DIRECTORY + "/" + fileName;
-        return new FileUploadResponse(imageId, fileName, imageUrl);
+        return new FileUploadResponse(imageId, imageKey, uploadedAsset.secureUrl());
     }
 
     private void validateImage(MultipartFile file) {
@@ -117,34 +100,22 @@ public class LocalFileStorageServiceImpl implements FileStorageService {
                 .orElseThrow(() -> new NotFoundException("Court image not found"));
 
         courtAccessService.requireCanManage(courtImage.getCourt().getId());
-        deleteStoredFile(courtImage.getFileName());
+        cloudinaryStorageClient.deleteImage(toCloudinaryPublicId(courtImage.getFileName()));
         courtImageRepository.delete(courtImage);
     }
 
-    private void deleteStoredFile(String fileName) {
-        Path imageDirectory = getCourtImageDirectory();
-        Path imagePath = imageDirectory.resolve(fileName).normalize();
-
-        if (!imagePath.startsWith(imageDirectory)) {
-            throw new BadRequestException("Invalid image path");
-        }
-
+    private void deleteStoredFileQuietly(String imageKey) {
         try {
-            Files.deleteIfExists(imagePath);
-        } catch (IOException exception) {
-            throw new BadRequestException("Could not delete image");
-        }
-    }
-
-    private Path getCourtImageDirectory() {
-        return Paths.get(uploadDir, COURT_IMAGE_DIRECTORY).toAbsolutePath().normalize();
-    }
-
-    private void deleteStoredFileQuietly(String fileName) {
-        try {
-            deleteStoredFile(fileName);
+            cloudinaryStorageClient.deleteImage(toCloudinaryPublicId(imageKey));
         } catch (BadRequestException ignored) {
             // Preserve the original upload error while attempting best-effort cleanup.
         }
+    }
+
+    private String toCloudinaryPublicId(String imageKey) {
+        if (imageKey.contains("/")) {
+            return imageKey;
+        }
+        return cloudinaryProperties.normalizedUploadFolder() + "/" + imageKey;
     }
 }

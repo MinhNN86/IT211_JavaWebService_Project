@@ -44,7 +44,7 @@ public class SecurityConfig {
                 .exceptionHandling(e -> e.authenticationEntryPoint(entryPoint).accessDeniedHandler(deniedHandler))
                 .authorizeHttpRequests(a -> a
                         .requestMatchers("/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/refresh",
-                                "/api/v1/auth/forgot-password", "/uploads/**")
+                                "/api/v1/auth/forgot-password")
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/courts/**")
                         .permitAll().requestMatchers("/api/v1/admin/**").hasRole("ADMIN")

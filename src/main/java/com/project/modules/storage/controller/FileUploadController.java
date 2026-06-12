@@ -3,7 +3,6 @@ package com.project.modules.storage.controller;
 import java.util.List;
 import java.util.UUID;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -30,8 +29,8 @@ public class FileUploadController {
     }
 
     @DeleteMapping("/api/v1/manager/courts/images/{imageId}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    void deleteCourtImage(@PathVariable UUID imageId) {
+    ApiResponse<Void> deleteCourtImage(@PathVariable UUID imageId) {
         service.deleteCourtImage(imageId);
+        return ApiResponse.success("Delete successfully", null);
     }
 }

@@ -106,7 +106,10 @@ Cấu hình mặc định nằm tại `src/main/resources/application.properties
 | `spring.datasource.username/password` | `root` / `123456` |
 | `app.jwt.access-token-expiration-ms` | `1800000` (30 phút) |
 | `app.jwt.refresh-token-expiration-ms` | `604800000` (7 ngày) |
-| `app.file.upload-dir` | `uploads` |
+| `app.cloudinary.cloud-name` | `${CLOUDINARY_CLOUD_NAME:}` |
+| `app.cloudinary.api-key` | `${CLOUDINARY_API_KEY:}` |
+| `app.cloudinary.api-secret` | `${CLOUDINARY_API_SECRET:}` |
+| `app.cloudinary.upload-folder` | `courts` |
 | Upload limit | `10MB/file`, `50MB/request` |
 
 Có thể override bằng biến môi trường:
@@ -207,17 +210,13 @@ Manager tạo sân sẽ tự được gán quản lý; Admin tạo sân phải t
 - Logout xóa refresh token; access token đã cấp vẫn dùng được đến khi hết hạn.
 - User `LOCKED` hoặc `DISABLED` không thể đăng nhập/xác thực.
 - `401` dành cho request chưa xác thực/token không hợp lệ; `403` dành cho request thiếu quyền.
-- Public: auth register/login/refresh/forgot-password, `GET /api/v1/courts/**`, `GET /uploads/**`.
+- Public: auth register/login/refresh/forgot-password, `GET /api/v1/courts/**`.
 - Customer chỉ truy cập `/api/v1/customer/**`; Manager/Admin truy cập `/api/v1/manager/**`; chỉ Admin truy cập `/api/v1/admin/**`.
 - CORS hiện cho phép mọi origin, các method `GET`, `POST`, `PUT`, `DELETE`, `OPTIONS` và mọi header.
 
 ## Upload ảnh
 
-Hỗ trợ PNG, JPG/JPEG và WEBP, tối đa `10MB/file`. Ảnh lưu tại:
-
-```text
-uploads/courts/<uuid>.<extension>
-```
+Hỗ trợ PNG, JPG/JPEG và WEBP, tối đa `10MB/file`. Ảnh được upload lên Cloudinary bằng `public_id` dạng `<folder>/<uuid>`; trong database chỉ lưu UUID ảnh và URL Cloudinary.
 
 Upload ảnh:
 
@@ -227,7 +226,7 @@ curl -X POST http://localhost:8080/api/v1/manager/courts/1/images \
   -F 'files=@/path/to/court.jpg'
 ```
 
-Ảnh có thể truy cập công khai qua `http://localhost:8080/uploads/courts/<file-name>`.
+API trả về URL Cloudinary `secure_url`, ví dụ `https://res.cloudinary.com/<cloud-name>/image/upload/...`.
 
 ## Postman, kiểm thử và format
 

@@ -2,10 +2,13 @@ package com.project.modules.storage;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
-import java.io.IOException;
-import java.nio.file.*;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 
@@ -13,6 +16,7 @@ import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -25,14 +29,14 @@ import com.project.modules.court.entity.Court;
 import com.project.modules.court.repository.CourtImageRepository;
 import com.project.modules.court.repository.CourtRepository;
 import com.project.modules.court.service.CourtService;
+import com.project.modules.storage.service.CloudinaryStorageClient;
+import com.project.modules.storage.service.CloudinaryStorageClient.UploadedAsset;
 import com.project.modules.storage.service.FileStorageService;
 import com.project.modules.user.repository.UserRepository;
 
 @SpringBootTest
 @AutoConfigureMockMvc
-class LocalFileStorageServiceIntegrationTest {
-    private static final Path UPLOAD_DIRECTORY = Paths.get("build/test-uploads/courts").toAbsolutePath().normalize();
-
+class CloudinaryFileStorageServiceIntegrationTest {
     @Autowired
     private FileStorageService storage;
     @Autowired
@@ -45,24 +49,26 @@ class LocalFileStorageServiceIntegrationTest {
     private UserRepository users;
     @Autowired
     private MockMvc mockMvc;
+    @MockBean
+    private CloudinaryStorageClient cloudinaryStorageClient;
 
     @BeforeEach
-    @AfterEach
-    void cleanUp() throws IOException {
+    void setUp() {
         SecurityContextHolder.clearContext();
         images.deleteAll();
         courts.deleteAll();
-        if (Files.exists(UPLOAD_DIRECTORY)) {
-            try (var paths = Files.walk(UPLOAD_DIRECTORY)) {
-                paths.sorted(Comparator.reverseOrder()).forEach(path -> {
-                    try {
-                        Files.deleteIfExists(path);
-                    } catch (IOException ex) {
-                        throw new RuntimeException(ex);
-                    }
-                });
-            }
-        }
+        reset(cloudinaryStorageClient);
+        when(cloudinaryStorageClient.uploadImage(any(), anyString())).thenAnswer(invocation -> {
+            String publicId = invocation.getArgument(1);
+            return new UploadedAsset(publicId, "https://res.cloudinary.com/test-cloud/image/upload/" + publicId);
+        });
+    }
+
+    @AfterEach
+    void cleanUp() {
+        SecurityContextHolder.clearContext();
+        images.deleteAll();
+        courts.deleteAll();
     }
 
     @Test
@@ -76,8 +82,10 @@ class LocalFileStorageServiceIntegrationTest {
         var response = courtService.findById(court.getId());
         assertThat(response.images()).extracting("id").containsExactly(first.id(), second.id());
         assertThat(images.count()).isEqualTo(2);
-        assertThat(Files.exists(UPLOAD_DIRECTORY.resolve(first.fileName()))).isTrue();
-        assertThat(Files.exists(UPLOAD_DIRECTORY.resolve(second.fileName()))).isTrue();
+        assertThat(first.fileName()).isEqualTo(first.id().toString());
+        assertThat(first.url()).startsWith("https://res.cloudinary.com/test-cloud/image/upload/test-courts/");
+        assertThat(second.fileName()).isEqualTo(second.id().toString());
+        assertThat(second.url()).startsWith("https://res.cloudinary.com/test-cloud/image/upload/test-courts/");
     }
 
     @Test
@@ -88,12 +96,12 @@ class LocalFileStorageServiceIntegrationTest {
         storage.deleteCourtImage(uploaded.id());
 
         assertThat(images.existsById(uploaded.id())).isFalse();
-        assertThat(Files.exists(UPLOAD_DIRECTORY.resolve(uploaded.fileName()))).isFalse();
+        verify(cloudinaryStorageClient).deleteImage("test-courts/" + uploaded.fileName());
         assertThat(courtService.findById(court.getId()).images()).isEmpty();
     }
 
     @Test
-    void validatesAllImagesBeforeStoringAnyFile() throws IOException {
+    void validatesAllImagesBeforeStoringAnyFile() {
         Court court = createCourt();
         var invalid = new MockMultipartFile("files", "invalid.txt", "text/plain", new byte[]{1});
 
@@ -101,7 +109,7 @@ class LocalFileStorageServiceIntegrationTest {
                 .isInstanceOf(BadRequestException.class);
 
         assertThat(images.count()).isZero();
-        assertThat(Files.exists(UPLOAD_DIRECTORY)).isFalse();
+        verify(cloudinaryStorageClient, never()).uploadImage(any(), anyString());
     }
 
     @Test
@@ -114,13 +122,31 @@ class LocalFileStorageServiceIntegrationTest {
                 .file(new MockMultipartFile("files", "court.png", "image/png", new byte[]{1, 2, 3})))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.data[0].url")
-                        .value(org.hamcrest.Matchers.startsWith("http://localhost/uploads/courts/")));
+                        .value(org.hamcrest.Matchers.startsWith("https://res.cloudinary.com/test-cloud/")));
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                 .get("/api/v1/courts/{courtId}", court.getId()))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.data.images[0].url")
-                        .value(org.hamcrest.Matchers.startsWith("http://localhost/uploads/courts/")));
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .jsonPath("$.data.images[0].url")
+                        .value(org.hamcrest.Matchers.startsWith("https://res.cloudinary.com/test-cloud/")));
+    }
+
+    @Test
+    @WithMockUser(username = "manager", roles = "MANAGER")
+    void deleteResponseContainsSuccessMessage() throws Exception {
+        Court court = createCourt();
+        var uploaded = storage.attachToCourt(court.getId(), List.of(image("court.png"))).getFirst();
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                .delete("/api/v1/manager/courts/images/{imageId}", uploaded.id()))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.success")
+                        .value(true))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.message")
+                        .value("Delete successfully"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.data")
+                        .doesNotExist());
     }
 
     private Court createCourt() {

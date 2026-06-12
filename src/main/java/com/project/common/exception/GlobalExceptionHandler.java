@@ -48,6 +48,11 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.FORBIDDEN, ex.getMessage(), req);
     }
 
+    @ExceptionHandler(ExternalStorageException.class)
+    ResponseEntity<ErrorResponse> externalStorage(Exception ex, HttpServletRequest req) {
+        return error(HttpStatus.BAD_GATEWAY, ex.getMessage(), req);
+    }
+
     @ExceptionHandler(Exception.class)
     ResponseEntity<ErrorResponse> other(Exception ex, HttpServletRequest req) {
         return error(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage(), req);

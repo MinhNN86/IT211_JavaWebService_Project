@@ -88,7 +88,7 @@ CREATE TABLE IF NOT EXISTS court_images (
     id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
     court_id BIGINT NOT NULL,
     file_name VARCHAR(255) NOT NULL,
-    url VARCHAR(255) NOT NULL,
+    url VARCHAR(512) NOT NULL,
     created_at DATETIME(6) NOT NULL,
 
     PRIMARY KEY (id),
