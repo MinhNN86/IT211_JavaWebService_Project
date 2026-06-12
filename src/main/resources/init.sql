@@ -128,6 +128,7 @@ CREATE TABLE IF NOT EXISTS bookings (
     booking_date DATE NOT NULL,
     status VARCHAR(32) NOT NULL DEFAULT 'PENDING',
     note VARCHAR(255) NULL,
+    price_snapshot JSON NULL,
     created_at DATETIME(6) NULL,
     updated_at DATETIME(6) NULL,
 

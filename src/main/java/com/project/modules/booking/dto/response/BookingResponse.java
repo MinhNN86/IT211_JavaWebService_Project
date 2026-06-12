@@ -4,6 +4,7 @@ import java.time.*;
 import java.util.List;
 import java.util.UUID;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.project.common.enums.BookingStatus;
 import com.project.modules.timeslot.dto.response.TimeSlotResponse;
 
@@ -17,5 +18,6 @@ public record BookingResponse(
                 LocalDate bookingDate,
                 BookingStatus status,
                 String note,
+                JsonNode priceSnapshot,
                 LocalDateTime createdAt) {
 }

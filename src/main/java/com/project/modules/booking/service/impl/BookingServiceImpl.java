@@ -4,12 +4,16 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Comparator;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.project.common.enums.BookingStatus;
 import com.project.common.enums.CourtStatus;
 import com.project.common.exception.BadRequestException;
@@ -50,6 +54,7 @@ public class BookingServiceImpl implements BookingService {
     private final CourtAccessService courtAccessService;
     private final TimeSlotRepository timeSlotRepository;
     private final BookingMapper bookingMapper;
+    private final ObjectMapper objectMapper;
 
     public BookingResponse create(CreateBookingRequest request) {
         Court court = courtRepository.findByIdForUpdate(request.courtId())
@@ -86,10 +91,30 @@ public class BookingServiceImpl implements BookingService {
 
         Booking booking = Booking.builder().customer(customer).court(court)
                 .timeSlots(new LinkedHashSet<>(selectedTimeSlots)).bookingDate(request.bookingDate())
-                .note(request.note())
+                .note(request.note()).priceSnapshot(createPriceSnapshot(selectedTimeSlots))
                 .build();
         Booking savedBooking = bookingRepository.save(booking);
         return bookingMapper.toResponse(savedBooking);
+    }
+
+    private ObjectNode createPriceSnapshot(List<TimeSlot> timeSlots) {
+        ArrayNode slotSnapshots = objectMapper.createArrayNode();
+        long totalPrice = 0;
+
+        for (TimeSlot timeSlot : timeSlots.stream().sorted(Comparator.comparing(TimeSlot::getStartTime)).toList()) {
+            ObjectNode slotSnapshot = objectMapper.createObjectNode();
+            slotSnapshot.put("timeSlotId", timeSlot.getId());
+            slotSnapshot.put("startTime", timeSlot.getStartTime().toString());
+            slotSnapshot.put("endTime", timeSlot.getEndTime().toString());
+            slotSnapshot.put("price", timeSlot.getPrice());
+            slotSnapshots.add(slotSnapshot);
+            totalPrice += timeSlot.getPrice();
+        }
+
+        ObjectNode snapshot = objectMapper.createObjectNode();
+        snapshot.set("timeSlots", slotSnapshots);
+        snapshot.put("totalPrice", totalPrice);
+        return snapshot;
     }
 
     @Transactional(readOnly = true)

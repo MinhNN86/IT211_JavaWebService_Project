@@ -9,6 +9,7 @@ import java.util.List;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
@@ -73,6 +74,28 @@ class BookingServiceIntegrationTest {
 
         assertThatThrownBy(() -> service.create(request(court, List.of(first.getId(), second.getId()))))
                 .isInstanceOf(ConflictException.class);
+    }
+
+    @Test
+    void returnsBookedPricesAfterTimeSlotPriceChanges() {
+        var court = createCourt();
+        var first = createTimeSlot(court, LocalTime.of(18, 0), LocalTime.of(19, 0));
+        var second = createTimeSlot(court, LocalTime.of(19, 0), LocalTime.of(20, 0));
+
+        var booking = service.create(request(court, List.of(first.getId(), second.getId())));
+        first.setPrice(75_000);
+        timeSlots.save(first);
+
+        var response = service.myBookings(Pageable.unpaged()).content().stream()
+                .filter(item -> item.id().equals(booking.id()))
+                .findFirst()
+                .orElseThrow();
+        var snapshot = response.priceSnapshot();
+
+        assertThat(snapshot.get("timeSlots")).hasSize(2);
+        assertThat(snapshot.at("/timeSlots/0/price").asInt()).isEqualTo(50_000);
+        assertThat(snapshot.get("totalPrice").asLong()).isEqualTo(100_000);
+        assertThat(response.timeSlots()).extracting("price").containsExactly(50_000, 50_000);
     }
 
     @Test

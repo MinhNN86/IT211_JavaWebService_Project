@@ -7,6 +7,10 @@ import java.util.Set;
 
 import jakarta.persistence.*;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
+import com.fasterxml.jackson.databind.JsonNode;
 import com.project.common.enums.BookingStatus;
 import com.project.modules.court.entity.Court;
 import com.project.modules.timeslot.entity.TimeSlot;
@@ -40,6 +44,9 @@ public class Booking {
     @Builder.Default
     private BookingStatus status = BookingStatus.PENDING;
     private String note;
+    @Column(name = "price_snapshot", columnDefinition = "json")
+    @JdbcTypeCode(SqlTypes.JSON)
+    private JsonNode priceSnapshot;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     @PrePersist
