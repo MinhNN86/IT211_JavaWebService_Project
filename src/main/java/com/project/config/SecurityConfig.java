@@ -20,7 +20,7 @@ import lombok.RequiredArgsConstructor;
 
 @Configuration
 @EnableMethodSecurity
-@EnableConfigurationProperties(JwtProperties.class)
+@EnableConfigurationProperties({JwtProperties.class, MailProperties.class})
 @RequiredArgsConstructor
 public class SecurityConfig {
     private final JwtAuthenticationFilter filter;
@@ -44,7 +44,7 @@ public class SecurityConfig {
                 .exceptionHandling(e -> e.authenticationEntryPoint(entryPoint).accessDeniedHandler(deniedHandler))
                 .authorizeHttpRequests(a -> a
                         .requestMatchers("/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/refresh",
-                                "/api/v1/auth/forgot-password")
+                                "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password")
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/courts/**")
                         .permitAll().requestMatchers("/api/v1/admin/**").hasRole("ADMIN")

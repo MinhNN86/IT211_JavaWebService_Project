@@ -221,6 +221,24 @@
       "value": "id,desc",
       "type": "string",
       "description": "Sắp xếp giảm dần mặc định"
+    },
+    {
+      "key": "resetEmail",
+      "value": "customer@demo.local",
+      "type": "string",
+      "description": "Email dùng cho forgot/reset password. Đổi sang Gmail thật của user đã đăng ký để nhận OTP."
+    },
+    {
+      "key": "resetOtp",
+      "value": "123456",
+      "type": "string",
+      "description": "OTP 6 số nhận được trong email, nhập thủ công trước khi gọi Reset Password."
+    },
+    {
+      "key": "resetPassword",
+      "value": "newsecret",
+      "type": "string",
+      "description": "Mật khẩu mới dùng cho luồng reset password."
     }
   ],
   "item": [
@@ -286,7 +304,9 @@
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.variables.set('expectedStatus', '200');"]
+                "exec": [
+                  "pm.variables.set('expectedStatus', '200');"
+                ]
               }
             },
             {
@@ -333,7 +353,9 @@
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.variables.set('expectedStatus', '200');"]
+                "exec": [
+                  "pm.variables.set('expectedStatus', '200');"
+                ]
               }
             },
             {
@@ -380,7 +402,9 @@
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.variables.set('expectedStatus', '200');"]
+                "exec": [
+                  "pm.variables.set('expectedStatus', '200');"
+                ]
               }
             },
             {
@@ -461,27 +485,67 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"customer@demo.local\"\n}",
+              "raw": "{\n  \"email\": \"{{resetEmail}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             },
-            "url": "{{baseUrl}}/api/v1/auth/forgot-password"
+            "url": "{{baseUrl}}/api/v1/auth/forgot-password",
+            "description": "Gửi OTP reset password tới `resetEmail`. Response luôn giống nhau dù email có tồn tại hay không."
           },
           "event": [
             {
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.variables.set('expectedStatus', '200');"]
+                "exec": [
+                  "pm.variables.set('expectedStatus', '200');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{resetEmail}}\",\n  \"otp\": \"{{resetOtp}}\",\n  \"newPassword\": \"{{resetPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/v1/auth/reset-password",
+            "description": "Nhập OTP nhận được vào biến `resetOtp`, sau đó gọi request này để đặt lại mật khẩu."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.variables.set('expectedStatus', '200');"
+                ]
               }
             }
           ]
         }
       ],
-      "description": "Đăng ký, đăng nhập ba role, refresh token và kiểm tra forgot-password. Token được tự động lưu."
+      "description": "Đăng ký, đăng nhập ba role, refresh token, forgot-password và reset-password. Token được tự động lưu."
     },
     {
       "name": "02 - Manager Setup",
@@ -503,7 +567,9 @@
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.variables.set('expectedStatus', '201');"]
+                "exec": [
+                  "pm.variables.set('expectedStatus', '201');"
+                ]
               }
             },
             {
@@ -565,7 +631,9 @@
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.variables.set('expectedStatus', '200');"]
+                "exec": [
+                  "pm.variables.set('expectedStatus', '200');"
+                ]
               }
             }
           ]
@@ -577,7 +645,9 @@
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.variables.set('expectedStatus', '201');"]
+                "exec": [
+                  "pm.variables.set('expectedStatus', '201');"
+                ]
               }
             },
             {
@@ -601,9 +671,9 @@
                 "value": "application/json"
               }
             ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"startTime\": \"{{slotStart}}\",\n  \"endTime\": \"{{slotEnd}}\"\n}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"startTime\": \"{{slotStart}}\",\n  \"endTime\": \"{{slotEnd}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -620,7 +690,9 @@
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.variables.set('expectedStatus', '201');"]
+                "exec": [
+                  "pm.variables.set('expectedStatus', '201');"
+                ]
               }
             },
             {
@@ -630,15 +702,15 @@
                 "exec": [
                   "if (pm.response.code === 201) {",
                   "    const data = pm.response.json().data;",
-              "    pm.test('Creates eight 30-minute time slots', function () {",
-              "        pm.expect(data).to.be.an('array').with.lengthOf(8);",
-              "        pm.expect(data[0].startTime).to.eql('06:00');",
-              "        pm.expect(data[7].endTime).to.eql('10:00');",
-              "        pm.expect(data.every(slot => Number(slot.price) === 0)).to.be.true;",
-              "    });",
-              "    pm.collectionVariables.set('bulkPriceGroupOneIds', JSON.stringify(data.slice(0, 4).map(slot => slot.id)));",
-              "    pm.collectionVariables.set('bulkPriceGroupTwoIds', JSON.stringify(data.slice(4).map(slot => slot.id)));",
-              "}"
+                  "    pm.test('Creates eight 30-minute time slots', function () {",
+                  "        pm.expect(data).to.be.an('array').with.lengthOf(8);",
+                  "        pm.expect(data[0].startTime).to.eql('06:00');",
+                  "        pm.expect(data[7].endTime).to.eql('10:00');",
+                  "        pm.expect(data.every(slot => Number(slot.price) === 0)).to.be.true;",
+                  "    });",
+                  "    pm.collectionVariables.set('bulkPriceGroupOneIds', JSON.stringify(data.slice(0, 4).map(slot => slot.id)));",
+                  "    pm.collectionVariables.set('bulkPriceGroupTwoIds', JSON.stringify(data.slice(4).map(slot => slot.id)));",
+                  "}"
                 ]
               }
             }
@@ -651,9 +723,9 @@
                 "value": "application/json"
               }
             ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"startTime\": \"06:00\",\n  \"endTime\": \"10:00\",\n  \"durationMinutes\": 30\n}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"startTime\": \"06:00\",\n  \"endTime\": \"10:00\",\n  \"durationMinutes\": 30\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -662,60 +734,60 @@
             },
             "url": "{{baseUrl}}/api/v1/manager/courts/{{courtId}}/time-slots/bulk",
             "description": "Tạo nhanh 8 khung giờ, mỗi khung 30 phút, từ 06:00 đến 10:00. Có thể đổi durationMinutes thành 60."
-      }
-    },
-    {
-      "name": "Bulk Update Time Slot Prices",
-      "event": [
-        {
-          "listen": "prerequest",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.variables.set('expectedStatus', '200');"
-            ]
           }
         },
         {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "if (pm.response.code === 200) {",
-              "    const data = pm.response.json().data;",
-              "    pm.test('Updates two time slot price groups', function () {",
-              "        pm.expect(data).to.be.an('array').with.lengthOf(8);",
-              "        pm.expect(data.slice(0, 4).every(slot => Number(slot.price) === Number(pm.collectionVariables.get('defaultPrice')))).to.be.true;",
-              "        pm.expect(data.slice(4).every(slot => Number(slot.price) === Number(pm.collectionVariables.get('updatedPrice')))).to.be.true;",
-              "    });",
-              "}"
-            ]
-          }
-        }
-      ],
-      "request": {
-        "method": "PATCH",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"entries\": [\n    {\n      \"timeSlotIds\": {{bulkPriceGroupOneIds}},\n      \"price\": {{defaultPrice}}\n    },\n    {\n      \"timeSlotIds\": {{bulkPriceGroupTwoIds}},\n      \"price\": {{updatedPrice}}\n    }\n  ]\n}",
-          "options": {
-            "raw": {
-              "language": "json"
+          "name": "Bulk Update Time Slot Prices",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.variables.set('expectedStatus', '200');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json().data;",
+                  "    pm.test('Updates two time slot price groups', function () {",
+                  "        pm.expect(data).to.be.an('array').with.lengthOf(8);",
+                  "        pm.expect(data.slice(0, 4).every(slot => Number(slot.price) === Number(pm.collectionVariables.get('defaultPrice')))).to.be.true;",
+                  "        pm.expect(data.slice(4).every(slot => Number(slot.price) === Number(pm.collectionVariables.get('updatedPrice')))).to.be.true;",
+                  "    });",
+                  "}"
+                ]
+              }
             }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"entries\": [\n    {\n      \"timeSlotIds\": {{bulkPriceGroupOneIds}},\n      \"price\": {{defaultPrice}}\n    },\n    {\n      \"timeSlotIds\": {{bulkPriceGroupTwoIds}},\n      \"price\": {{updatedPrice}}\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/v1/manager/time-slots/prices",
+            "description": "Cập nhật giá nhanh cho nhiều nhóm time slot. Mỗi nhóm có thể dùng một mức giá khác nhau."
           }
         },
-        "url": "{{baseUrl}}/api/v1/manager/time-slots/prices",
-        "description": "Cập nhật giá nhanh cho nhiều nhóm time slot. Mỗi nhóm có thể dùng một mức giá khác nhau."
-      }
-    },
-    {
-      "name": "Update Time Slot",
+        {
+          "name": "Update Time Slot",
           "request": {
             "method": "PUT",
             "header": [
@@ -740,7 +812,9 @@
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.variables.set('expectedStatus', '200');"]
+                "exec": [
+                  "pm.variables.set('expectedStatus', '200');"
+                ]
               }
             }
           ]
@@ -761,8 +835,14 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/courts?name=&status=ACTIVE&page={{page}}&size={{size}}&sort={{sortAsc}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "courts"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "courts"
+              ],
               "query": [
                 {
                   "key": "name",
@@ -793,7 +873,9 @@
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.variables.set('expectedStatus', '200');"]
+                "exec": [
+                  "pm.variables.set('expectedStatus', '200');"
+                ]
               }
             }
           ]
@@ -813,7 +895,9 @@
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.variables.set('expectedStatus', '200');"]
+                "exec": [
+                  "pm.variables.set('expectedStatus', '200');"
+                ]
               }
             }
           ]
@@ -833,7 +917,9 @@
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.variables.set('expectedStatus', '200');"]
+                "exec": [
+                  "pm.variables.set('expectedStatus', '200');"
+                ]
               }
             }
           ]
@@ -866,7 +952,9 @@
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.variables.set('expectedStatus', '200');"]
+                "exec": [
+                  "pm.variables.set('expectedStatus', '200');"
+                ]
               }
             }
           ]
@@ -897,7 +985,9 @@
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.variables.set('expectedStatus', '200');"]
+                "exec": [
+                  "pm.variables.set('expectedStatus', '200');"
+                ]
               }
             }
           ]
@@ -962,7 +1052,9 @@
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.variables.set('expectedStatus', '200');"]
+                "exec": [
+                  "pm.variables.set('expectedStatus', '200');"
+                ]
               }
             }
           ]
@@ -995,7 +1087,9 @@
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.variables.set('expectedStatus', '200');"]
+                "exec": [
+                  "pm.variables.set('expectedStatus', '200');"
+                ]
               }
             }
           ]
@@ -1012,7 +1106,9 @@
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.variables.set('expectedStatus', '200');"]
+                "exec": [
+                  "pm.variables.set('expectedStatus', '200');"
+                ]
               }
             }
           ]
@@ -1043,7 +1139,9 @@
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.variables.set('expectedStatus', '200');"]
+                "exec": [
+                  "pm.variables.set('expectedStatus', '200');"
+                ]
               }
             }
           ]
@@ -1077,7 +1175,9 @@
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.variables.set('expectedStatus', '200');"]
+                "exec": [
+                  "pm.variables.set('expectedStatus', '200');"
+                ]
               }
             }
           ]
@@ -1141,7 +1241,9 @@
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.variables.set('expectedStatus', '200');"]
+                "exec": [
+                  "pm.variables.set('expectedStatus', '200');"
+                ]
               }
             },
             {
@@ -1173,7 +1275,9 @@
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.variables.set('expectedStatus', '200');"]
+                "exec": [
+                  "pm.variables.set('expectedStatus', '200');"
+                ]
               }
             },
             {
@@ -1204,7 +1308,9 @@
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.variables.set('expectedStatus', '204');"]
+                "exec": [
+                  "pm.variables.set('expectedStatus', '204');"
+                ]
               }
             }
           ],
@@ -1227,7 +1333,9 @@
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.variables.set('expectedStatus', '200');"]
+                "exec": [
+                  "pm.variables.set('expectedStatus', '200');"
+                ]
               }
             }
           ]
@@ -1258,7 +1366,9 @@
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.variables.set('expectedStatus', '200');"]
+                "exec": [
+                  "pm.variables.set('expectedStatus', '200');"
+                ]
               }
             }
           ]
@@ -1275,7 +1385,9 @@
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.variables.set('expectedStatus', '200');"]
+                "exec": [
+                  "pm.variables.set('expectedStatus', '200');"
+                ]
               }
             }
           ]
@@ -1292,7 +1404,9 @@
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.variables.set('expectedStatus', '204');"]
+                "exec": [
+                  "pm.variables.set('expectedStatus', '204');"
+                ]
               }
             }
           ]
@@ -1336,7 +1450,9 @@
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.variables.set('expectedStatus', '200');"]
+                "exec": [
+                  "pm.variables.set('expectedStatus', '200');"
+                ]
               }
             },
             {
@@ -1369,7 +1485,9 @@
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.variables.set('expectedStatus', '204');"]
+                "exec": [
+                  "pm.variables.set('expectedStatus', '204');"
+                ]
               }
             }
           ]
@@ -1417,7 +1535,9 @@
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.variables.set('expectedStatus', '200');"]
+                "exec": [
+                  "pm.variables.set('expectedStatus', '200');"
+                ]
               }
             }
           ]
@@ -1449,7 +1569,9 @@
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.variables.set('expectedStatus', '200');"]
+                "exec": [
+                  "pm.variables.set('expectedStatus', '200');"
+                ]
               }
             }
           ]
@@ -1483,7 +1605,9 @@
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.variables.set('expectedStatus', '204');"]
+                "exec": [
+                  "pm.variables.set('expectedStatus', '204');"
+                ]
               }
             }
           ]
@@ -1500,7 +1624,9 @@
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.variables.set('expectedStatus', '204');"]
+                "exec": [
+                  "pm.variables.set('expectedStatus', '204');"
+                ]
               }
             }
           ]

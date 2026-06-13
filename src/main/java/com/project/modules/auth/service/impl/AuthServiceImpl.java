@@ -22,11 +22,13 @@ import com.project.modules.auth.dto.request.LoginRequest;
 import com.project.modules.auth.dto.request.LogoutRequest;
 import com.project.modules.auth.dto.request.RefreshTokenRequest;
 import com.project.modules.auth.dto.request.RegisterRequest;
+import com.project.modules.auth.dto.request.ResetPasswordRequest;
 import com.project.modules.auth.dto.response.AuthResponse;
 import com.project.modules.auth.dto.response.RefreshResponse;
 import com.project.modules.auth.entity.RefreshToken;
 import com.project.modules.auth.repository.RefreshTokenRepository;
 import com.project.modules.auth.service.AuthService;
+import com.project.modules.auth.service.OtpService;
 import com.project.modules.user.entity.User;
 import com.project.modules.user.repository.UserRepository;
 import com.project.security.jwt.JwtProperties;
@@ -46,6 +48,7 @@ public class AuthServiceImpl implements AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final JwtTokenBlacklistService tokenBlacklistService;
     private final JwtProperties jwtProperties;
+    private final OtpService otpService;
 
     public AuthResponse register(RegisterRequest request) {
         boolean usernameExists = userRepository.existsByUsername(request.username());
@@ -116,9 +119,11 @@ public class AuthServiceImpl implements AuthService {
     }
 
     public void forgotPassword(ForgotPasswordRequest request) {
-        if (!userRepository.existsByEmail(request.email())) {
-            throw new NotFoundException("Email not found");
-        }
+        otpService.issueOtp(request.email());
+    }
+
+    public void resetPassword(ResetPasswordRequest request) {
+        otpService.verifyAndReset(request.email(), request.otp(), request.newPassword());
     }
 
     private AuthResponse createAuthResponse(User user) {

@@ -58,6 +58,12 @@ public class AuthController {
         return ApiResponse.success("If the account exists, a reset request was accepted", null);
     }
 
+    @PostMapping("/reset-password")
+    ApiResponse<Void> reset(@Valid @RequestBody ResetPasswordRequest request) {
+        service.resetPassword(request);
+        return ApiResponse.success("Password reset successfully", null);
+    }
+
     private String extractAccessToken(String authorizationHeader) {
         if (authorizationHeader == null || !authorizationHeader.startsWith(BEARER_PREFIX)) {
             throw new UnauthorizedException("Missing access token");
